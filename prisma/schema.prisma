@@ -9,3 +9,77 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+//owner has a one to one relationship with a business that they create
+model owner {
+  id            Int        @id @default(autoincrement())
+  username      String     @unique
+  password      String
+  ownerName     String
+  takeHomeTotal Int        @default(0)
+  ownerBusiness business[]
+}
+
+//a business is linked to the owner by id and has a one to many relationship with the members table
+model business {
+  id             Int      @id @default(autoincrement())
+  businessName   String   @unique
+  code           String   @unique
+  owner_id       Int
+  owner          owner    @relation(fields: [owner_id], references: [id])
+  businessMember member[]
+
+  @@unique([id, businessName, code]) // Composite unique constraint
+}
+
+//a member has a one to one relationship with a business also acting as a through table to connect with an owner. The member is linked to one specific business by the business name and code
+model member {
+  id                    Int          @id @default(autoincrement())
+  username              String       @unique
+  password              String
+  memberName            String
+  business_id           Int
+  business_businessName String
+  business_code         String
+  business              business     @relation(fields: [business_id, business_businessName, business_code], references: [id, businessName, code])
+  memberInfo            memberInfo[]
+  drop                  drop[]
+}
+
+//a member has a one to one relationship with the memberInfo table connected by the member id
+model memberInfo {
+  id            Int    @id @default(autoincrement())
+  member_id     Int
+  percentage    Int    @default(60)
+  takeHomeTotal Int    @default(0)
+  totalOwe      Int    @default(0)
+  totalOwed     Int    @default(0)
+  member        member @relation(fields: [member_id], references: [id])
+}
+
+//a member has a one to many relationship with the drop table connected by the member id
+model drop {
+  id           Int       @id @default(autoincrement())
+  member_id    Int
+  date         DateTime
+  total        Int       @default(0)
+  memberCut    Int       @default(0)
+  businessCut  Int       @default(0)
+  memberOwes   Int       @default(0)
+  businessOwes Int       @default(0)
+  paid         Boolean   @default(false)
+  member       member    @relation(fields: [member_id], references: [id])
+  service      service[]
+}
+
+//a drop has a one to manu relationship with the service table connected by the drop id
+model service {
+  id             Int    @id @default(autoincrement())
+  drop_id        Int
+  description    String
+  cash           Int    @default(0)
+  credit         Int    @default(0)
+  deposit        Int    @default(0)
+  giftCertAmount Int    @default(0)
+  drop           drop   @relation(fields: [drop_id], references: [id])
+}
