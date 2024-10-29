@@ -17,7 +17,7 @@ router.use(async (req, res, next) => {
   // Get user from token
   try {
     const { id } = jwt.verify(token);
-    const user = await prisma.user.findUniqueOrThrow({ where: { id } });
+    const user = await prisma.owner.findUniqueOrThrow({ where: { id } });
     res.locals.user = user;
     next();
   } catch (err) {
@@ -27,6 +27,7 @@ router.use(async (req, res, next) => {
 });
 
 router.use("/auth", require("./auth"));
+router.use("/owner", require("./owner"));
 
 //routes added as we create folers holding them like this....
 

@@ -10,7 +10,7 @@ router.post("/register", async (req, res, next) => {
   try {
     const { username, ownerName, password } = req.body;
 
-    // Check if username and password provided
+    // Check if username, ownerName and password provided
     if (!username || !password || !ownerName) {
       throw new ServerError(400, "Username, name, and password required.");
     }
@@ -19,14 +19,14 @@ router.post("/register", async (req, res, next) => {
     const owner = await prisma.owner.findUnique({
       where: { username },
     });
-    if (user) {
+    if (owner) {
       throw new ServerError(
         400,
         `Account with username ${username} already exists.`
       );
     }
 
-    // Create new user
+    // Create new owner
     const newOwner = await prisma.owner.create({
       data: { username, password, ownerName, takeHomeTotal: 0 },
     });
@@ -58,6 +58,10 @@ router.post("/login", async (req, res, next) => {
         `Account with username ${username} does not exist.`
       );
     }
+
+    // Log passwords for debugging
+    console.log("Provided password:", password);
+    console.log("Stored hashed password:", owner.password);
 
     // Check if password is correct
     const passwordValid = await bcrypt.compare(password, owner.password);
