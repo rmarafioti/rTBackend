@@ -2,6 +2,7 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const morgan = require("morgan");
+const cors = require("cors");
 
 const PORT = process.env.PORT ?? 3000;
 
@@ -26,14 +27,14 @@ const createApp = async () => {
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "../../dist/index.html"));
     });
-  } else {
+  } /*else {
     // Only require Vite in development
     const { createServer: createViteServer } = require("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
     });
     app.use(vite.middlewares);
-  }
+  }*/
 
   // Simple error handling middleware
   app.use((err, req, res, next) => {
