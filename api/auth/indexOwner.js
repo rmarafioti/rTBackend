@@ -26,12 +26,9 @@ router.post("/register", async (req, res, next) => {
       );
     }
 
-    // Hash password before saving to database
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     // Create new owner
     const newOwner = await prisma.owner.create({
-      data: { username, password: hashedPassword, ownerName, takeHomeTotal: 0 },
+      data: { username, password, ownerName, takeHomeTotal: 0 },
     });
 
     const token = jwt.sign({ id: newOwner.id });
@@ -61,6 +58,10 @@ router.post("/login", async (req, res, next) => {
         `Account with username ${username} does not exist.`
       );
     }
+
+    // Log passwords for debugging
+    console.log("Provided password:", password);
+    console.log("Stored hashed password:", owner.password);
 
     // Check if password is correct
     const passwordValid = await bcrypt.compare(password, owner.password);
