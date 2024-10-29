@@ -9,6 +9,13 @@ const PORT = process.env.PORT ?? 3000;
 const createApp = async () => {
   const app = express();
 
+  // Enable CORS for your frontend origin
+  app.use(
+    cors({
+      origin: "http://localhost:5173", // Update this to the frontend origin in production
+    })
+  );
+
   // Logging middleware
   app.use(morgan("dev"));
 
