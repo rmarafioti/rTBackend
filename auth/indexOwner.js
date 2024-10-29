@@ -12,11 +12,11 @@ router.post("/register", async (req, res, next) => {
 
     // Check if username and password provided
     if (!username || !password || !ownerName) {
-      throw new ServerError(400, "Username and password required.");
+      throw new ServerError(400, "Username, name, and password required.");
     }
 
     // Check if account already exists
-    const user = await prisma.user.findUnique({
+    const owner = await prisma.owner.findUnique({
       where: { username },
     });
     if (user) {
@@ -27,11 +27,11 @@ router.post("/register", async (req, res, next) => {
     }
 
     // Create new user
-    const newUser = await prisma.user.create({
+    const newOwner = await prisma.owner.create({
       data: { username, password, ownerName, takeHomeTotal: 0 },
     });
 
-    const token = jwt.sign({ id: newUser.id });
+    const token = jwt.sign({ id: newOwner.id });
     res.json({ token });
   } catch (err) {
     next(err);
@@ -41,18 +41,18 @@ router.post("/register", async (req, res, next) => {
 /** Returns token for account if credentials valid */
 router.post("/login", async (req, res, next) => {
   try {
-    const { name, username, ownerName, password } = req.body;
+    const { username, ownerName, password } = req.body;
 
-    // Check if username and password provided
+    // Check if username, name and password provided
     if (!username || !password || !ownerName) {
-      throw new ServerError(400, "Username and password required.");
+      throw new ServerError(400, "Username, name, and password required.");
     }
 
     // Check if account exists
-    const user = await prisma.user.findUnique({
+    const owner = await prisma.owner.findUnique({
       where: { username },
     });
-    if (!user) {
+    if (!owner) {
       throw new ServerError(
         400,
         `Account with username ${username} does not exist.`
@@ -60,12 +60,12 @@ router.post("/login", async (req, res, next) => {
     }
 
     // Check if password is correct
-    const passwordValid = await bcrypt.compare(password, user.password);
+    const passwordValid = await bcrypt.compare(password, owner.password);
     if (!passwordValid) {
       throw new ServerError(401, "Invalid password.");
     }
 
-    const token = jwt.sign({ id: user.id });
+    const token = jwt.sign({ id: owner.id });
     res.json({ token });
   } catch (err) {
     next(err);
