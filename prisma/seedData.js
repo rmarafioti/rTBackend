@@ -20,3 +20,5 @@ const owners = [
     takeHomeTotal: 600,
   },
 ];
+
+module.exports = { owners };
