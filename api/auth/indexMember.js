@@ -8,47 +8,30 @@ module.exports = router;
 /** Creates new account and returns token */
 router.post("/register", async (req, res, next) => {
   try {
-    const {
-      username,
-      memberName,
-      password,
-      business_businessName,
-      business_code,
-    } = req.body;
+    const { username, memberName, password } = req.body;
 
-    // Check if username, memberName, password, business name and code are provided
-    if (
-      !username ||
-      !password ||
-      !memberName ||
-      !business_businessName ||
-      business_code
-    ) {
-      throw new ServerError(
-        400,
-        "Username, name, business name, code and password required."
-      );
+    // Check if username, memberName, and password are provided
+    if (!username || !password || !memberName) {
+      throw new ServerError(400, "Username, name, and password required.");
     }
 
     // Check if account already exists
-    const owner = await prisma.member.findUnique({
+    const member = await prisma.member.findUnique({
       where: { username },
     });
-    if (owner) {
+    if (member) {
       throw new ServerError(
         400,
         `Account with username ${username} already exists.`
       );
     }
 
-    // Create new owner
+    // Create new member
     const newMember = await prisma.member.create({
       data: {
         username,
         password,
         memberName,
-        business_businessName,
-        business_code,
       },
     });
 
@@ -62,33 +45,18 @@ router.post("/register", async (req, res, next) => {
 /** Returns token for account if credentials valid */
 router.post("/login", async (req, res, next) => {
   try {
-    const {
-      username,
-      memberName,
-      password,
-      business_businessName,
-      business_code,
-    } = req.body;
+    const { username, memberName, password } = req.body;
 
-    // Check if username, name, password, business name and code are provided
-    if (
-      !username ||
-      !password ||
-      !memberName ||
-      business_businessName ||
-      business_code
-    ) {
-      throw new ServerError(
-        400,
-        "Username, name, password, business name and code required."
-      );
+    // Check if username, name, password are provided
+    if (!username || !password || !memberName) {
+      throw new ServerError(400, "Username, name, password required.");
     }
 
     // Check if account exists
-    const owner = await prisma.member.findUnique({
+    const member = await prisma.member.findUnique({
       where: { username },
     });
-    if (!owner) {
+    if (!member) {
       throw new ServerError(
         400,
         `Account with username ${username} does not exist.`
@@ -97,7 +65,7 @@ router.post("/login", async (req, res, next) => {
 
     // Log passwords for debugging
     console.log("Provided password:", password);
-    console.log("Stored hashed password:", owner.password);
+    console.log("Stored hashed password:", member.password);
 
     // Check if password is correct
     const passwordValid = await bcrypt.compare(password, member.password);
@@ -105,7 +73,7 @@ router.post("/login", async (req, res, next) => {
       throw new ServerError(401, "Invalid password.");
     }
 
-    const token = jwt.sign({ id: owner.id });
+    const token = jwt.sign({ id: member.id });
     res.json({ token });
   } catch (err) {
     next(err);
