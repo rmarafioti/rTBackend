@@ -8,11 +8,14 @@ module.exports = router;
 /** Creates new account and returns token */
 router.post("/register", async (req, res, next) => {
   try {
-    const { username, memberName, password } = req.body;
+    const { username, memberName, password, email, phone } = req.body;
 
-    // Check if username, memberName, and password are provided
-    if (!username || !password || !memberName) {
-      throw new ServerError(400, "Username, name, and password required.");
+    // Check if username, memberName, password, email and phone are provided
+    if (!username || !password || !memberName || !email || !phone) {
+      throw new ServerError(
+        400,
+        "Username, name, password, email and phone required."
+      );
     }
 
     // Check if account already exists
@@ -32,6 +35,12 @@ router.post("/register", async (req, res, next) => {
         username,
         password,
         memberName,
+        email,
+        phone,
+        percentage: 60,
+        takeHomeTotal: 0,
+        totalOwe: 0,
+        totalOwed: 0,
       },
     });
 
@@ -45,11 +54,11 @@ router.post("/register", async (req, res, next) => {
 /** Returns token for account if credentials valid */
 router.post("/login", async (req, res, next) => {
   try {
-    const { username, memberName, password } = req.body;
+    const { username, password } = req.body;
 
-    // Check if username, name, password are provided
-    if (!username || !password || !memberName) {
-      throw new ServerError(400, "Username, name, password required.");
+    // Check if username and password are provided
+    if (!username || !password) {
+      throw new ServerError(400, "Username and password required.");
     }
 
     // Check if account exists
