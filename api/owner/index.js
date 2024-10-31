@@ -2,7 +2,7 @@ const prisma = require("../../prisma");
 const router = require("express").Router();
 module.exports = router;
 
-// GET to check the logged-in user
+// GET to check the logged-in owner
 router.get("/me", async (req, res, next) => {
   console.log("Authenticated user:", res.locals.user);
 

@@ -29,32 +29,24 @@ model business {
   owner          owner    @relation(fields: [owner_id], references: [id])
   businessMember member[]
 
-  @@unique([id, businessName, code]) // Composite unique constraint
+  @@unique([businessName, code]) // Composite unique constraint
 }
 
 //a member has a one to one relationship with a business also acting as a through table to connect with an owner. The member is linked to one specific business by the business name and code
 model member {
-  id                    Int          @id @default(autoincrement())
-  username              String       @unique
-  password              String
-  memberName            String
-  business_id           Int
-  business_businessName String
-  business_code         String
-  business              business     @relation(fields: [business_id, business_businessName, business_code], references: [id, businessName, code])
-  memberInfo            memberInfo[]
-  drop                  drop[]
-}
-
-//a member has a one to one relationship with the memberInfo table connected by the member id
-model memberInfo {
-  id            Int    @id @default(autoincrement())
-  member_id     Int
-  percentage    Int    @default(60)
-  takeHomeTotal Int    @default(0)
-  totalOwe      Int    @default(0)
-  totalOwed     Int    @default(0)
-  member        member @relation(fields: [member_id], references: [id])
+  id            Int       @id @default(autoincrement())
+  username      String    @unique
+  password      String
+  memberName    String
+  email         String
+  phone         String
+  percentage    Int       @default(60)
+  takeHomeTotal Int       @default(0)
+  totalOwe      Int       @default(0)
+  totalOwed     Int       @default(0)
+  business_id   Int?
+  business      business? @relation(fields: [business_id], references: [id])
+  drop          drop[]
 }
 
 //a member has a one to many relationship with the drop table connected by the member id
