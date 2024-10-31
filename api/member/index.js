@@ -7,40 +7,70 @@ router.get("/me", async (req, res, next) => {
   console.log("Authenticated user:", res.locals.user);
 
   try {
-    // Ensure the user is authenticated and available in res.locals.user
-    const { businessName, code } = req.body;
     if (!res.locals.user) {
       return next({
         status: 401,
         message: "You are not logged in or do not have access",
       });
     }
-    res.json();
-  } catch (error) {
-    next(error); // Forward errors to the error-handling middleware
-  }
-});
 
-// Post route to create member info
-// need to update schema for onboarding which asks to create email and phone contact info for each user.
-/*router.post("/memberinfo", async (req, res, next) => {
-  console.log("Authenticated user:", res.locals.user);
+    const { id } = res.locals.user;
 
-  try {
-    const { id: owner_id } = res.locals.user;
-    const { businessName, code } = req.body;
-
-    const newMemberInfo = await prisma.business.create({
-      data: {
-        businessName,
-        code,
-        owner_id,
+    // Fetch the member's details along with their linked business, if any
+    const memberWithBusiness = await prisma.member.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        memberName: true,
+        email: true,
+        phone: true,
+        business: true, // Include linked business if needed
       },
     });
 
-    res.json(newBusiness);
+    if (!memberWithBusiness) {
+      return next({
+        status: 404,
+        message: `No member found with ID ${id}`,
+      });
+    }
+
+    res.json(memberWithBusiness);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST route to link team member to a business
+router.post("/business", async (req, res, next) => {
+  try {
+    const { id: member_id } = res.locals.user;
+    const { businessName, code } = req.body;
+
+    // Find the business by businessName and code
+    const business = await prisma.business.findUnique({
+      where: {
+        businessName_code: {
+          businessName,
+          code,
+        },
+      },
+    });
+
+    //if business is not found throw an error
+    if (!business) {
+      return res.status(404).json({ message: "Business not found" });
+    }
+
+    //link member to a business by setting the business id to the members table
+    const updatedMember = await prisma.member.update({
+      where: { id: member_id },
+      data: { business_id: business.id },
+    });
+
+    res.json(updatedMember);
   } catch (e) {
     next(e);
   }
 });
-*/

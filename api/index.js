@@ -28,6 +28,7 @@ router.use(async (req, res, next) => {
 
 router.use("/auth", require("./auth"));
 router.use("/owner", require("./owner"));
+router.use("/member", require("./member"));
 
 //routes added as we create folers holding them like this....
 

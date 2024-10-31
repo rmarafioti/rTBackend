@@ -29,7 +29,7 @@ model business {
   owner          owner    @relation(fields: [owner_id], references: [id])
   businessMember member[]
 
-  @@unique([id, businessName, code]) // Composite unique constraint
+  @@unique([businessName, code]) // Composite unique constraint
 }
 
 //a member has a one to one relationship with a business also acting as a through table to connect with an owner. The member is linked to one specific business by the business name and code
