@@ -72,10 +72,6 @@ router.post("/login", async (req, res, next) => {
       );
     }
 
-    // Log passwords for debugging
-    console.log("Provided password:", password);
-    console.log("Stored hashed password:", member.password);
-
     // Check if password is correct
     const passwordValid = await bcrypt.compare(password, member.password);
     if (!passwordValid) {
