@@ -16,6 +16,9 @@ router.get("/", async (req, res, next) => {
     // Query the database for the member's details
     const memberData = await prisma.member.findUnique({
       where: { id: member.id },
+      include: {
+        business: true, // Assumes there’s a relation named "business" in the Prisma schema
+      },
       // Include any related data if necessary, e.g., member-specific associations
     });
 

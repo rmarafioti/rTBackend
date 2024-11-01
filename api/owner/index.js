@@ -25,10 +25,8 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-module.exports = router;
-
 // Post route to create a new business
-/*router.post("/business", async (req, res, next) => {
+router.post("/business", async (req, res, next) => {
   console.log("Authenticated user:", res.locals.user);
 
   try {
@@ -47,4 +45,6 @@ module.exports = router;
   } catch (e) {
     next(e);
   }
-});*/
+});
+
+module.exports = router;
