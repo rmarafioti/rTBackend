@@ -29,14 +29,3 @@ router.use(async (req, res, next) => {
 router.use("/auth", require("./auth"));
 router.use("/owner", require("./owner"));
 router.use("/member", require("./member"));
-
-//routes added as we create folers holding them like this....
-
-/*router.use("/topics", require("./topics"));
-router.use("/categories", require("./categories"));
-router.use("/user_topics", require("./user_topics"));
-router.use("/users", require("./users"));
-router.use("/questions", require("./questions"));
-router.use("/quizes", require("./quizes"));
-router.use("/quiz_problems", require("./quiz_problems"));
-router.use("/image_words", require("./image_words"));*/

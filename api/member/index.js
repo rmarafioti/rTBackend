@@ -1,43 +1,32 @@
+// api/member/index.js
+const express = require("express");
+const router = express.Router();
 const prisma = require("../../prisma");
-const router = require("express").Router();
-module.exports = router;
 
-// GET to check the logged-in member
-router.get("/me", async (req, res, next) => {
-  console.log("Authenticated user:", res.locals.user);
-
+// Route to get logged-in member's information
+router.get("/", async (req, res, next) => {
   try {
-    if (!res.locals.user) {
-      return next({
-        status: 401,
-        message: "You are not logged in or do not have access",
-      });
+    // Access the member from res.locals, set by the middleware in api/index.js
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
     }
 
-    const { id } = res.locals.user;
-
-    // Fetch the member's details along with their linked business, if any
-    const memberWithBusiness = await prisma.member.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        username: true,
-        memberName: true,
-        email: true,
-        phone: true,
-        business: true, // Include linked business if needed
-      },
+    // Query the database for the member's details
+    const memberData = await prisma.member.findUnique({
+      where: { id: member.id },
+      // Include any related data if necessary, e.g., member-specific associations
     });
 
-    if (!memberWithBusiness) {
-      return next({
-        status: 404,
-        message: `No member found with ID ${id}`,
-      });
+    if (!memberData) {
+      return res.status(404).json({ error: "Member not found" });
     }
 
-    res.json(memberWithBusiness);
+    // Send the member's information as a response
+    res.json(memberData);
   } catch (error) {
+    console.error("Error retrieving member information:", error);
     next(error);
   }
 });
@@ -74,3 +63,5 @@ router.post("/business", async (req, res, next) => {
     next(e);
   }
 });
+
+module.exports = router;
