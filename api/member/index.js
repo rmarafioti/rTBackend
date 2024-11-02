@@ -3,8 +3,16 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
+// Middleware to check if the user is a member
+const requireMemberRole = (req, res, next) => {
+  if (res.locals.userRole !== "member") {
+    return res.status(403).json({ error: "Access forbidden: Members only." });
+  }
+  next();
+};
+
 // GET route to get logged-in member's information
-router.get("/", async (req, res, next) => {
+router.get("/", requireMemberRole, async (req, res, next) => {
   try {
     // Access the member from res.locals, set by the middleware in api/index.js
     const member = res.locals.user;
@@ -35,7 +43,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST route to link team member to a business
-router.post("/business", async (req, res, next) => {
+router.post("/business", requireMemberRole, async (req, res, next) => {
   try {
     const { id: member_id } = res.locals.user;
     const { businessName, code } = req.body;

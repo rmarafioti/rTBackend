@@ -31,8 +31,8 @@ router.post("/register", async (req, res, next) => {
       data: { username, password, ownerName, takeHomeTotal: 0 },
     });
 
-    const token = jwt.sign({ id: newOwner.id });
-    res.json({ token });
+    const token = jwt.sign({ id: newOwner.id, role: "owner" });
+    res.json({ token, role: "owner" });
   } catch (err) {
     next(err);
   }
@@ -65,8 +65,8 @@ router.post("/login", async (req, res, next) => {
       throw new ServerError(401, "Invalid password.");
     }
 
-    const token = jwt.sign({ id: owner.id });
-    res.json({ token });
+    const token = jwt.sign({ id: owner.id, role: "owner" });
+    res.json({ token, role: "owner" });
   } catch (err) {
     next(err);
   }

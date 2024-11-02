@@ -2,8 +2,16 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
+// Middleware to check if the user is a member
+const requireOwnerRole = (req, res, next) => {
+  if (res.locals.userRole !== "owner") {
+    return res.status(403).json({ error: "Access forbidden: Owners only." });
+  }
+  next();
+};
+
 // GET route to get logged-in owner's information
-router.get("/", async (req, res, next) => {
+router.get("/", requireOwnerRole, async (req, res, next) => {
   try {
     // Access the owner from res.locals, set by the middleware in api/index.js
     const owner = res.locals.user;
@@ -27,7 +35,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST route to create a new business
-router.post("/business", async (req, res, next) => {
+router.post("/business", requireOwnerRole, async (req, res, next) => {
   try {
     const { id: owner_id } = res.locals.user;
     const { businessName, code } = req.body;
