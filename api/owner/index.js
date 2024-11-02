@@ -23,7 +23,13 @@ router.get("/", requireOwnerRole, async (req, res, next) => {
     // Query the database for the owner's details
     const ownerData = await prisma.owner.findUnique({
       where: { id: owner.id },
-      include: { ownerBusiness: true },
+      include: {
+        ownerBusiness: {
+          include: {
+            businessMember: true,
+          },
+        },
+      },
     });
 
     // Send the owner's information as a response
