@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt");
 const router = require("express").Router();
 module.exports = router;
 
-/** Creates new account and returns token */
+// Creates new account and returns token
 router.post("/register", async (req, res, next) => {
   try {
     const { username, memberName, password, email, phone } = req.body;
@@ -44,14 +44,14 @@ router.post("/register", async (req, res, next) => {
       },
     });
 
-    const token = jwt.sign({ id: newMember.id });
-    res.json({ token });
+    const token = jwt.sign({ id: newMember.id, role: "member" });
+    res.json({ token, role: "member" });
   } catch (err) {
     next(err);
   }
 });
 
-/** Returns token for account if credentials valid */
+// Returns token for account if credentials valid
 router.post("/login", async (req, res, next) => {
   try {
     const { username, password } = req.body;
@@ -72,18 +72,14 @@ router.post("/login", async (req, res, next) => {
       );
     }
 
-    // Log passwords for debugging
-    console.log("Provided password:", password);
-    console.log("Stored hashed password:", member.password);
-
     // Check if password is correct
     const passwordValid = await bcrypt.compare(password, member.password);
     if (!passwordValid) {
       throw new ServerError(401, "Invalid password.");
     }
 
-    const token = jwt.sign({ id: member.id });
-    res.json({ token });
+    const token = jwt.sign({ id: member.id, role: "member" });
+    res.json({ token, role: "member" });
   } catch (err) {
     next(err);
   }

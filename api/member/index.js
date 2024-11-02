@@ -3,8 +3,16 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
-// Route to get logged-in member's information
-router.get("/", async (req, res, next) => {
+// Middleware to check if the user is a member
+const requireMemberRole = (req, res, next) => {
+  if (res.locals.userRole !== "member") {
+    return res.status(403).json({ error: "Access forbidden: Members only." });
+  }
+  next();
+};
+
+// GET route to get logged-in member's information
+router.get("/", requireMemberRole, async (req, res, next) => {
   try {
     // Access the member from res.locals, set by the middleware in api/index.js
     const member = res.locals.user;
@@ -17,7 +25,7 @@ router.get("/", async (req, res, next) => {
     const memberData = await prisma.member.findUnique({
       where: { id: member.id },
       include: {
-        business: true, // Assumes there’s a relation named "business" in the Prisma schema
+        business: true,
       },
       // Include any related data if necessary, e.g., member-specific associations
     });
@@ -35,7 +43,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST route to link team member to a business
-router.post("/business", async (req, res, next) => {
+router.post("/business", requireMemberRole, async (req, res, next) => {
   try {
     const { id: member_id } = res.locals.user;
     const { businessName, code } = req.body;
@@ -50,12 +58,12 @@ router.post("/business", async (req, res, next) => {
       },
     });
 
-    //if business is not found throw an error
+    // If business is not found throw an error
     if (!business) {
       return res.status(404).json({ message: "Business not found" });
     }
 
-    //link member to a business by setting the business id to the members table
+    // Link member to a business by setting the business id to the members table
     const updatedMember = await prisma.member.update({
       where: { id: member_id },
       data: { business_id: business.id },
