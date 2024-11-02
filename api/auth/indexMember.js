@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt");
 const router = require("express").Router();
 module.exports = router;
 
-/** Creates new account and returns token */
+// Creates new account and returns token
 router.post("/register", async (req, res, next) => {
   try {
     const { username, memberName, password, email, phone } = req.body;
@@ -51,7 +51,7 @@ router.post("/register", async (req, res, next) => {
   }
 });
 
-/** Returns token for account if credentials valid */
+// Returns token for account if credentials valid
 router.post("/login", async (req, res, next) => {
   try {
     const { username, password } = req.body;
