@@ -26,6 +26,11 @@ router.get("/", requireMemberRole, async (req, res, next) => {
       where: { id: member.id },
       include: {
         business: true,
+        drop: {
+          include: {
+            service: true,
+          },
+        },
       },
       // Include any related data if necessary, e.g., member-specific associations
     });
@@ -74,5 +79,217 @@ router.post("/business", requireMemberRole, async (req, res, next) => {
     next(e);
   }
 });
+
+// logged in member creates a drop
+router.post("/createdrop", requireMemberRole, async (req, res, next) => {
+  try {
+    // Access the member from res.locals, set by the middleware in api/index.js
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const newDrop = await prisma.drop.create({
+      data: {
+        member: {
+          connect: { id: member.id },
+        },
+        date: null,
+        total: 0,
+        memberCut: 0,
+        businessCut: 0,
+        memberOwes: 0,
+        businessOwes: 0,
+        paid: false,
+      },
+    });
+
+    res.json(newDrop);
+  } catch (e) {
+    console.error("Error creating a drop:", e);
+    next(e);
+  }
+});
+
+// logged in member can delete a drop
+router.delete(
+  "/deletedrop/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { drop_id } = req.params;
+
+      const drop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: { service: true },
+      });
+
+      if (!drop || drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this drop" });
+      }
+
+      const deleteDrop = await prisma.drop.delete({
+        where: { id: +drop_id },
+      });
+
+      res.json(deleteDrop);
+    } catch (e) {
+      console.error("Error deleting drop", e);
+      next(e);
+    }
+  }
+);
+
+// logged in member create a service
+router.post("/createservice", requireMemberRole, async (req, res, next) => {
+  try {
+    // Access the member from res.locals, set by the middleware in api/index.js
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const {
+      drop_id,
+      description,
+      cash = 0,
+      credit = 0,
+      deposit = 0,
+      giftCertAmount = 0,
+    } = req.body;
+
+    // Ensure the drop exists and belongs to the member
+    const drop = await prisma.drop.findUnique({
+      where: { id: drop_id },
+    });
+
+    if (!drop || drop.member_id !== member.id) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to add service to this drop." });
+    }
+
+    const newService = await prisma.service.create({
+      data: {
+        drop: {
+          connect: { id: drop_id },
+        },
+        description,
+        cash,
+        credit,
+        deposit,
+        giftCertAmount,
+      },
+    });
+
+    res.json(newService);
+  } catch (e) {
+    console.error("Error creating a service", e);
+    next(e);
+  }
+});
+
+// logged in member can update a service
+router.patch(
+  "/updateservice/:service_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { service_id } = req.params; // Get service_id from the route parameter
+      const {
+        description,
+        cash = 0,
+        credit = 0,
+        deposit = 0,
+        giftCertAmount = 0,
+      } = req.body;
+
+      // Ensure the drop exists and belongs to the member
+      const service = await prisma.service.findUnique({
+        where: { id: +service_id },
+        include: { drop: true },
+      });
+
+      if (!service || service.drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this service." });
+      }
+
+      const updatedService = await prisma.service.update({
+        where: { id: +service_id },
+        data: {
+          description,
+          cash,
+          credit,
+          deposit,
+          giftCertAmount,
+        },
+      });
+
+      res.json(updatedService);
+    } catch (e) {
+      console.error("Error updating service", e);
+      next(e);
+    }
+  }
+);
+
+// logged in member can delete a service
+
+router.delete(
+  "/deleteservice/:service_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { service_id } = req.params; // Get service_id from the route parameter
+
+      // Ensure the drop exists and belongs to the member
+      const service = await prisma.service.findUnique({
+        where: { id: +service_id },
+        include: { drop: true },
+      });
+
+      if (!service || service.drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this service." });
+      }
+
+      const deleteService = await prisma.service.delete({
+        where: { id: +service_id },
+      });
+
+      res.json(deleteService);
+    } catch (e) {
+      console.error("Error deleting service", e);
+      next(e);
+    }
+  }
+);
 
 module.exports = router;
