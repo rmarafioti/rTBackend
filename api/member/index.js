@@ -108,5 +108,53 @@ router.post("/createdrop", requireMemberRole, async (req, res, next) => {
 });
 
 // logged in member create a service
+router.post("/createservice", requireMemberRole, async (req, res, next) => {
+  try {
+    // Access the member from res.locals, set by the middleware in api/index.js
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const {
+      drop_id,
+      description,
+      cash = 0,
+      credit = 0,
+      deposit = 0,
+      giftCertAmount = 0,
+    } = req.body;
+
+    // Ensure the drop exists and belongs to the member
+    const drop = await prisma.drop.findUnique({
+      where: { id: drop_id },
+    });
+
+    if (!drop || drop.member_id !== member.id) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to add service to this drop." });
+    }
+
+    const newService = await prisma.service.create({
+      data: {
+        drop: {
+          connect: { id: drop_id },
+        },
+        description,
+        cash,
+        credit,
+        deposit,
+        giftCertAmount,
+      },
+    });
+
+    res.json(newService);
+  } catch (e) {
+    console.error("Error creating a service", e);
+    next(e);
+  }
+});
 
 module.exports = router;
