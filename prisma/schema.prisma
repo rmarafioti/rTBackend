@@ -53,7 +53,7 @@ model member {
 model drop {
   id           Int       @id @default(autoincrement())
   member_id    Int
-  date         DateTime
+  date         DateTime?
   total        Int       @default(0)
   memberCut    Int       @default(0)
   businessCut  Int       @default(0)

@@ -75,4 +75,38 @@ router.post("/business", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// logged in member creates a drop
+router.post("/createdrop", requireMemberRole, async (req, res, next) => {
+  try {
+    // Access the member from res.locals, set by the middleware in api/index.js
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const newDrop = await prisma.drop.create({
+      data: {
+        member: {
+          connect: { id: member.id },
+        },
+        date: null,
+        total: 0,
+        memberCut: 0,
+        businessCut: 0,
+        memberOwes: 0,
+        businessOwes: 0,
+        paid: false,
+      },
+    });
+
+    res.json(newDrop);
+  } catch (e) {
+    console.error("Error creating a drop:", e);
+    next(e);
+  }
+});
+
+// logged in member create a service
+
 module.exports = router;
