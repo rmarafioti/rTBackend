@@ -157,4 +157,57 @@ router.post("/createservice", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// logged in member can update a service
+router.patch(
+  "/updateservice/:service_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { service_id } = req.params; // Get service_id from the route parameter
+      const {
+        description,
+        cash = 0,
+        credit = 0,
+        deposit = 0,
+        giftCertAmount = 0,
+      } = req.body;
+
+      // Ensure the drop exists and belongs to the member
+      const service = await prisma.service.findUnique({
+        where: { id: +service_id },
+        include: { drop: true },
+      });
+
+      if (!service || service.drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this service." });
+      }
+
+      const updatedService = await prisma.service.update({
+        where: { id: +service_id },
+        data: {
+          description,
+          cash,
+          credit,
+          deposit,
+          giftCertAmount,
+        },
+      });
+
+      res.json(updatedService);
+    } catch (e) {
+      console.error("Error updating service", e);
+      next(e);
+    }
+  }
+);
+
 module.exports = router;
