@@ -210,4 +210,44 @@ router.patch(
   }
 );
 
+// logged in member can delete a service
+
+router.delete(
+  "/deleteservice/:service_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { service_id } = req.params; // Get service_id from the route parameter
+
+      // Ensure the drop exists and belongs to the member
+      const service = await prisma.service.findUnique({
+        where: { id: +service_id },
+        include: { drop: true },
+      });
+
+      if (!service || service.drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this service." });
+      }
+
+      const deleteService = await prisma.service.delete({
+        where: { id: +service_id },
+      });
+
+      res.json(deleteService);
+    } catch (e) {
+      console.error("Error deleting service", e);
+      next(e);
+    }
+  }
+);
+
 module.exports = router;
