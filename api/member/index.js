@@ -107,6 +107,43 @@ router.post("/createdrop", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// logged in member can delete a drop
+router.delete(
+  "/deletedrop/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { drop_id } = req.params;
+
+      const drop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: { service: true },
+      });
+
+      if (!drop || drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this drop" });
+      }
+
+      const deleteDrop = await prisma.drop.delete({
+        where: { id: +drop_id },
+      });
+
+      res.json(deleteDrop);
+    } catch (e) {
+      console.error("Error deleting drop", e);
+      next(e);
+    }
+  }
+);
+
 // logged in member create a service
 router.post("/createservice", requireMemberRole, async (req, res, next) => {
   try {

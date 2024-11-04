@@ -73,5 +73,5 @@ model service {
   credit         Int    @default(0)
   deposit        Int    @default(0)
   giftCertAmount Int    @default(0)
-  drop           drop   @relation(fields: [drop_id], references: [id])
+  drop           drop   @relation(fields: [drop_id], references: [id], onDelete: Cascade)
 }
