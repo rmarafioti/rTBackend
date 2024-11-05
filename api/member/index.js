@@ -199,6 +199,43 @@ router.post("/createservice", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// Logged-in member can get all services by drop ID
+router.get(
+  "/allservices/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { drop_id } = req.params;
+
+      // Query the database for services linked to the specified drop_id
+      const dropWithServices = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: {
+          service: true, // Ensure `services` is the correct relation name
+        },
+      });
+
+      if (!dropWithServices) {
+        return res
+          .status(404)
+          .json({ error: "No services found for this drop" });
+      }
+
+      // Send only the services as a response
+      res.json(dropWithServices.service);
+    } catch (error) {
+      console.error("Error retrieving services:", error);
+      next(error);
+    }
+  }
+);
+
 // logged in member can update a service
 router.patch(
   "/updateservice/:service_id",
