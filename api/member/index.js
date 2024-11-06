@@ -224,7 +224,7 @@ router.post(
       }
 
       const { drop_id } = req.params;
-      const { date, total, memberCut, businessCut, memberOwes, businessOwes } =
+      let { date, total, memberCut, businessCut, memberOwes, businessOwes } =
         req.body;
 
       const validDrop = await prisma.drop.findUnique({
@@ -236,6 +236,9 @@ router.post(
           .status(403)
           .json({ error: "Not authorized to update this drop." });
       }
+
+      // Parse date string to a Date object
+      date = date ? new Date(date) : null;
 
       const updatedDrop = await prisma.drop.update({
         where: { id: +drop_id },
