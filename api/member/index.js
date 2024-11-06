@@ -150,54 +150,153 @@ router.delete(
 );
 
 // logged in member create a service
-router.post("/createservice", requireMemberRole, async (req, res, next) => {
-  try {
-    // Access the member from res.locals, set by the middleware in api/index.js
-    const member = res.locals.user;
+router.post(
+  "/createservice/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
 
-    if (!member) {
-      return res.status(401).json({ error: "Member not authenticated" });
-    }
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
 
-    const {
-      drop_id,
-      description,
-      cash = 0,
-      credit = 0,
-      deposit = 0,
-      giftCertAmount = 0,
-    } = req.body;
-
-    // Ensure the drop exists and belongs to the member
-    const drop = await prisma.drop.findUnique({
-      where: { id: drop_id },
-    });
-
-    if (!drop || drop.member_id !== member.id) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to add service to this drop." });
-    }
-
-    const newService = await prisma.service.create({
-      data: {
-        drop: {
-          connect: { id: drop_id },
-        },
+      const { drop_id } = req.params; // Get drop_id from URL params
+      const {
         description,
-        cash,
-        credit,
-        deposit,
-        giftCertAmount,
-      },
-    });
+        cash = 0,
+        credit = 0,
+        deposit = 0,
+        giftCertAmount = 0,
+      } = req.body;
 
-    res.json(newService);
-  } catch (e) {
-    console.error("Error creating a service", e);
-    next(e);
+      // Log the received drop_id for debugging
+      console.log("Received drop_id:", drop_id);
+
+      // Check if drop_id is defined and is an integer
+      if (!drop_id || isNaN(parseInt(drop_id))) {
+        return res.status(400).json({ error: "Invalid or missing drop ID" });
+      }
+
+      // Ensure the drop exists and belongs to the member
+      const drop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+      });
+
+      if (!drop || drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to add service to this drop." });
+      }
+
+      const newService = await prisma.service.create({
+        data: {
+          drop: {
+            connect: { id: +drop_id },
+          },
+          description,
+          cash,
+          credit,
+          deposit,
+          giftCertAmount,
+        },
+      });
+
+      res.json(newService);
+    } catch (e) {
+      console.error("Error creating a service:", e);
+      next(e);
+    }
   }
-});
+);
+
+// Logged-in member can update a drop
+router.post(
+  "/updatedrop/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { drop_id } = req.params;
+      let { date, total, memberCut, businessCut, memberOwes, businessOwes } =
+        req.body;
+
+      const validDrop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+      });
+
+      if (!validDrop || validDrop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this drop." });
+      }
+
+      // Parse date string to a Date object
+      date = date ? new Date(date) : null;
+
+      const updatedDrop = await prisma.drop.update({
+        where: { id: +drop_id },
+        data: {
+          date,
+          total,
+          memberCut,
+          businessCut,
+          memberOwes,
+          businessOwes,
+        },
+      });
+
+      // Send only the services as a response
+      res.json(updatedDrop);
+    } catch (error) {
+      console.error("Error updating drop:", error);
+      next(error);
+    }
+  }
+);
+
+// Logged-in member can get all services by drop ID
+router.get(
+  "/allservices/:drop_id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { drop_id } = req.params;
+
+      // Query the database for services linked to the specified drop_id
+      const dropWithServices = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: {
+          service: true, // Ensure `services` is the correct relation name
+        },
+      });
+
+      if (!dropWithServices) {
+        return res
+          .status(404)
+          .json({ error: "No services found for this drop" });
+      }
+
+      // Send only the services as a response
+      res.json(dropWithServices.service);
+    } catch (error) {
+      console.error("Error retrieving services:", error);
+      next(error);
+    }
+  }
+);
 
 // logged in member can update a service
 router.patch(
