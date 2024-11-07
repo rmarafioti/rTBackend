@@ -38,8 +38,6 @@ model member {
   username      String    @unique
   password      String
   memberName    String
-  email         String
-  phone         String
   percentage    Int       @default(60)
   takeHomeTotal Int       @default(0)
   totalOwe      Int       @default(0)

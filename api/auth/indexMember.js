@@ -8,14 +8,11 @@ module.exports = router;
 // Creates new account and returns token
 router.post("/register", async (req, res, next) => {
   try {
-    const { username, memberName, password, email, phone } = req.body;
+    const { username, memberName, password } = req.body;
 
-    // Check if username, memberName, password, email and phone are provided
-    if (!username || !password || !memberName || !email || !phone) {
-      throw new ServerError(
-        400,
-        "Username, name, password, email and phone required."
-      );
+    // Check if username, memberName, and password are provided
+    if (!username || !password || !memberName) {
+      throw new ServerError(400, "Username, name, and password required.");
     }
 
     // Check if account already exists
@@ -35,8 +32,6 @@ router.post("/register", async (req, res, next) => {
         username,
         password,
         memberName,
-        email,
-        phone,
         percentage: 60,
         takeHomeTotal: 0,
         totalOwe: 0,
