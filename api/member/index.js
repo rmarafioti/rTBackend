@@ -112,6 +112,36 @@ router.post("/createdrop", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// logged in member gets drop info by drop id
+router.get("/getdrop/:drop_id", requireMemberRole, async (req, res, next) => {
+  try {
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const { drop_id } = req.params;
+
+    const getDrop = await prisma.drop.findUnique({
+      where: { id: +drop_id },
+      include: { service: true },
+    });
+
+    if (!getDrop || getDrop.member_id !== member.id) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to access this drop" });
+    }
+
+    // Send only the services as a response
+    res.json(getDrop);
+  } catch (error) {
+    console.error("Error retrieving drop:", error);
+    next(error);
+  }
+});
+
 // logged in member can delete a drop
 router.delete(
   "/deletedrop/:drop_id",
