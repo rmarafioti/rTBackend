@@ -25,14 +25,19 @@ router.get("/", requireMemberRole, async (req, res, next) => {
     const memberData = await prisma.member.findUnique({
       where: { id: member.id },
       include: {
-        business: true,
+        business: {
+          include: {
+            businessMember: {
+              where: { id: { not: member.id } }, // Exclude the logged-in member from the team list
+            },
+          },
+        },
         drop: {
           include: {
             service: true,
           },
         },
       },
-      // Include any related data if necessary, e.g., member-specific associations
     });
 
     if (!memberData) {
