@@ -296,6 +296,55 @@ router.post(
   }
 );
 
+// Logged in member updates there member info when a drop is submitted
+
+router.patch(
+  "/updatememberinfo/:id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { id } = req.params;
+      const { memberCut, memberOwes, businessOwes } = req.body;
+
+      // Fetch the latest member data from the database
+      const existingMember = await prisma.member.findUnique({
+        where: { id: +id },
+      });
+
+      if (!existingMember) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      const updatedMemberInfo = await prisma.member.update({
+        where: { id: +id },
+        data: {
+          takeHomeTotal: existingMember.takeHomeTotal + +memberCut,
+          totalOwe: existingMember.totalOwe + +memberOwes,
+          totalOwed: existingMember.totalOwed + +businessOwes,
+        },
+      });
+
+      if (!updatedMemberInfo) {
+        return next({
+          status: 401,
+          message: "Update invalid, please try again",
+        });
+      }
+
+      res.json(updatedMemberInfo);
+    } catch (error) {
+      console.error("Error updating member information:", error);
+      next(error);
+    }
+  }
+);
+
 // Logged-in member can get all services by drop ID
 router.get(
   "/allservices/:drop_id",
