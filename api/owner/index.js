@@ -60,4 +60,37 @@ router.post("/business", requireOwnerRole, async (req, res, next) => {
   }
 });
 
+// PATCH route to mark all unpaid drops as paid for a specific member
+router.patch(
+  "/droppaid/:memberId",
+  requireOwnerRole,
+  async (req, res, next) => {
+    try {
+      const owner = res.locals.user;
+
+      if (!owner) {
+        return res.status(401).json({ error: "Owner not authenticated" });
+      }
+
+      const { memberId } = req.params;
+
+      // Update all unpaid drops for the given member
+      const updateDropsPaid = await prisma.drop.updateMany({
+        where: {
+          member_id: +memberId,
+          paid: false,
+        },
+        data: {
+          paid: true,
+        },
+      });
+
+      res.json(updateDropsPaid);
+    } catch (e) {
+      console.error("Error updating drops:", e);
+      next(e);
+    }
+  }
+);
+
 module.exports = router;

@@ -296,6 +296,99 @@ router.post(
   }
 );
 
+// Logged in member updates there member info when a drop is submitted
+
+router.post(
+  "/updatememberinfo/:id",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { id } = req.params;
+      const { memberCut, memberOwes, businessOwes } = req.body;
+
+      // Fetch the latest member data from the database
+      const thisMember = await prisma.member.findUnique({
+        where: { id: +id },
+      });
+
+      if (!thisMember) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      const updatedMemberInfo = await prisma.member.update({
+        where: { id: +id },
+        data: {
+          takeHomeTotal: member.takeHomeTotal + +memberCut,
+          totalOwe: member.totalOwe + +memberOwes,
+          totalOwed: member.totalOwed + +businessOwes,
+        },
+      });
+
+      if (!updatedMemberInfo) {
+        return next({
+          status: 401,
+          message: "Update invalid, please try again",
+        });
+      }
+
+      res.json(updatedMemberInfo);
+    } catch (error) {
+      console.error("Error updating member information:", error);
+      next(error);
+    }
+  }
+);
+
+// PATCH route to update owner/business take home total
+router.patch(
+  "/businesstotalupdate",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Member not authenticated" });
+      }
+
+      const { businessCut } = req.body;
+
+      if (!businessCut) {
+        return res.status(400).json({ error: "Missing businessCut" });
+      }
+
+      // Fetch the latest member data from the database
+      const business = await prisma.business.findUnique({
+        where: { id: member.business_id },
+        include: { owner: true },
+      });
+
+      if (!business || !business.owner) {
+        return res.status(404).json({ error: "Business or owner not found" });
+      }
+
+      const owner = business.owner;
+
+      const updateBusinessTotal = await prisma.owner.update({
+        where: { id: owner.id },
+        data: {
+          takeHomeTotal: owner.takeHomeTotal + +businessCut,
+        },
+      });
+
+      res.json(updateBusinessTotal);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 // Logged-in member can get all services by drop ID
 router.get(
   "/allservices/:drop_id",
