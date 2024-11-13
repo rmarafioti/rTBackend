@@ -26,7 +26,15 @@ router.get("/", requireOwnerRole, async (req, res, next) => {
       include: {
         ownerBusiness: {
           include: {
-            businessMember: true,
+            businessMember: {
+              include: {
+                drop: {
+                  include: {
+                    service: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
