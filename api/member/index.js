@@ -345,6 +345,50 @@ router.post(
   }
 );
 
+// PATCH route to update owner/business take home total
+router.patch(
+  "/businesstotalupdate",
+  requireMemberRole,
+  async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      if (!member) {
+        return res.status(401).json({ error: "Owner not authenticated" });
+      }
+
+      const { businessCut } = req.body;
+
+      if (!businessCut) {
+        return res.status(400).json({ error: "Missing businessCut" });
+      }
+
+      // Fetch the latest member data from the database
+      const business = await prisma.business.findUnique({
+        where: { id: member.business_id },
+        include: { owner: true },
+      });
+
+      if (!business || !business.owner) {
+        return res.status(404).json({ error: "Business or owner not found" });
+      }
+
+      const owner = business.owner;
+
+      const updateBusinessTotal = await prisma.owner.update({
+        where: { id: owner.id },
+        data: {
+          takeHomeTotal: owner.takeHomeTotal + +businessCut,
+        },
+      });
+
+      res.json(updateBusinessTotal);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 // Logged-in member can get all services by drop ID
 router.get(
   "/allservices/:drop_id",
