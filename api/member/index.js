@@ -354,7 +354,7 @@ router.patch(
       const member = res.locals.user;
 
       if (!member) {
-        return res.status(401).json({ error: "Owner not authenticated" });
+        return res.status(401).json({ error: "Member not authenticated" });
       }
 
       const { businessCut } = req.body;
