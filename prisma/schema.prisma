@@ -58,6 +58,8 @@ model drop {
   memberOwes   Int       @default(0)
   businessOwes Int       @default(0)
   paid         Boolean   @default(false)
+  paidDate     DateTime?
+  paidMessage  String?
   member       member    @relation(fields: [member_id], references: [id])
   service      service[]
 }

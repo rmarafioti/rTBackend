@@ -22,34 +22,27 @@ CREATE TABLE "member" (
     "username" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "memberName" TEXT NOT NULL,
-    "business_id" INTEGER NOT NULL,
-    "business_businessName" TEXT NOT NULL,
-    "business_code" TEXT NOT NULL,
-    CONSTRAINT "member_business_id_business_businessName_business_code_fkey" FOREIGN KEY ("business_id", "business_businessName", "business_code") REFERENCES "business" ("id", "businessName", "code") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "memberInfo" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "member_id" INTEGER NOT NULL,
     "percentage" INTEGER NOT NULL DEFAULT 60,
     "takeHomeTotal" INTEGER NOT NULL DEFAULT 0,
     "totalOwe" INTEGER NOT NULL DEFAULT 0,
     "totalOwed" INTEGER NOT NULL DEFAULT 0,
-    CONSTRAINT "memberInfo_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "member" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "business_id" INTEGER,
+    CONSTRAINT "member_business_id_fkey" FOREIGN KEY ("business_id") REFERENCES "business" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "drop" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "member_id" INTEGER NOT NULL,
-    "date" DATETIME NOT NULL,
+    "date" DATETIME,
     "total" INTEGER NOT NULL DEFAULT 0,
     "memberCut" INTEGER NOT NULL DEFAULT 0,
     "businessCut" INTEGER NOT NULL DEFAULT 0,
     "memberOwes" INTEGER NOT NULL DEFAULT 0,
     "businessOwes" INTEGER NOT NULL DEFAULT 0,
     "paid" BOOLEAN NOT NULL DEFAULT false,
+    "paidDate" DATETIME,
+    "paidMessage" TEXT,
     CONSTRAINT "drop_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "member" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
@@ -62,7 +55,7 @@ CREATE TABLE "service" (
     "credit" INTEGER NOT NULL DEFAULT 0,
     "deposit" INTEGER NOT NULL DEFAULT 0,
     "giftCertAmount" INTEGER NOT NULL DEFAULT 0,
-    CONSTRAINT "service_drop_id_fkey" FOREIGN KEY ("drop_id") REFERENCES "drop" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "service_drop_id_fkey" FOREIGN KEY ("drop_id") REFERENCES "drop" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
@@ -75,7 +68,7 @@ CREATE UNIQUE INDEX "business_businessName_key" ON "business"("businessName");
 CREATE UNIQUE INDEX "business_code_key" ON "business"("code");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "business_id_businessName_code_key" ON "business"("id", "businessName", "code");
+CREATE UNIQUE INDEX "business_businessName_code_key" ON "business"("businessName", "code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "member_username_key" ON "member"("username");
