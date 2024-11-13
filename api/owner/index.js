@@ -81,6 +81,7 @@ router.patch(
       }
 
       const { memberId } = req.params;
+      const { paidMessage } = req.body;
 
       // Update all unpaid drops for the given member
       const updateDropsPaid = await prisma.drop.updateMany({
@@ -90,6 +91,8 @@ router.patch(
         },
         data: {
           paid: true,
+          paidDate: new Date(),
+          paidMessage: paidMessage,
         },
       });
 
