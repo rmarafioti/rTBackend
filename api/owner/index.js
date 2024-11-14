@@ -26,7 +26,15 @@ router.get("/", requireOwnerRole, async (req, res, next) => {
       include: {
         ownerBusiness: {
           include: {
-            businessMember: true,
+            businessMember: {
+              include: {
+                drop: {
+                  include: {
+                    service: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -73,6 +81,11 @@ router.patch(
       }
 
       const { memberId } = req.params;
+      const { paidMessage } = req.body;
+
+      // Log to check incoming data
+      console.log("Received memberId:", memberId);
+      console.log("Received paidMessage:", paidMessage);
 
       // Update all unpaid drops for the given member
       const updateDropsPaid = await prisma.drop.updateMany({
@@ -82,6 +95,8 @@ router.patch(
         },
         data: {
           paid: true,
+          paidDate: new Date(),
+          paidMessage: paidMessage,
         },
       });
 
