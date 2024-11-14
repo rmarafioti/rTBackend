@@ -147,6 +147,36 @@ router.get("/getdrop/:drop_id", requireMemberRole, async (req, res, next) => {
   }
 });
 
+// logged in member gets all paid drops
+router.get("/getpaiddrops", requireMemberRole, async (req, res, next) => {
+  try {
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const paidDrops = await prisma.drop.findMany({
+      where: {
+        member_id: member.id,
+        paid: true,
+      },
+      include: {
+        service: true,
+      },
+    });
+
+    if (!paidDrops.length === 0) {
+      return res.status(403).json({ error: "No paid drops found" });
+    }
+
+    res.json(paidDrops);
+  } catch (e) {
+    console.error("Error getting drops:", e);
+    next(e);
+  }
+});
+
 // logged in member can delete a drop
 router.delete(
   "/deletedrop/:drop_id",
