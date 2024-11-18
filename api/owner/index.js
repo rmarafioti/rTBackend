@@ -110,8 +110,9 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
   }
 });
 
+//this route functionbality is now being used in the previous route
 // PATCH route to mark all unpaid drops as paid for a specific member
-router.patch(
+/*router.patch(
   "/droppaid/:memberId",
   requireOwnerRole,
   async (req, res, next) => {
@@ -148,6 +149,6 @@ router.patch(
       next(e);
     }
   }
-);
+);*/
 
 module.exports = router;

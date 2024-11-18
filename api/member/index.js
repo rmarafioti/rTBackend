@@ -419,6 +419,48 @@ router.patch(
   }
 );
 
+//logged in member can create a paid notice
+router.post("/paynotice", requireMemberRole, async (req, res, next) => {
+  try {
+    const member = res.locals.user;
+
+    if (!member) {
+      return res.status(401).json({ error: "Member not authenticated" });
+    }
+
+    const { payee, paidMessage, amount, dropIds } = req.body;
+
+    if (!dropIds || dropIds.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "No drops specified for payment notice" });
+    }
+
+    const payNotice = await prisma.paidNotice.create({
+      data: {
+        payee,
+        paidMessage,
+        amount,
+      },
+    });
+
+    await prisma.drop.updateMany({
+      where: {
+        id: { in: dropIds },
+        paid: false,
+      },
+      data: {
+        paidNotice_id: payNotice.id,
+      },
+    });
+
+    res.json({ payNotice });
+  } catch (e) {
+    console.error("Error sending payment notice");
+    next(e);
+  }
+});
+
 // Logged-in member can get all services by drop ID
 router.get(
   "/allservices/:drop_id",
