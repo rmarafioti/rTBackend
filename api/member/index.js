@@ -35,6 +35,8 @@ router.get("/", requireMemberRole, async (req, res, next) => {
         drop: {
           include: {
             service: true,
+            paidDrop: true,
+            paidNotice: true,
           },
         },
       },
