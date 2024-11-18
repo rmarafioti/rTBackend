@@ -68,6 +68,48 @@ router.post("/business", requireOwnerRole, async (req, res, next) => {
   }
 });
 
+// POST route for an owner to mark a drop as paid
+router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
+  try {
+    const owner = res.locals.user;
+
+    if (!owner) {
+      return res.status(401).json({ error: "Owner not authenticated" });
+    }
+
+    const { payee, paidMessage, amount, dropIds } = req.body;
+
+    if (!dropIds || dropIds.length === 0) {
+      return res.status(400).json({ error: "No drops specified for payment" });
+    }
+
+    const paidDrop = await prisma.paidDrop.create({
+      data: {
+        payee,
+        paidMessage,
+        amount,
+      },
+    });
+
+    //update related drops and mark them as paid
+    const updateDrops = await prisma.drop.updateMany({
+      where: {
+        id: { in: dropIds },
+        paid: false,
+      },
+      data: {
+        paid: true,
+        paidDrop_id: paidDrop.id,
+      },
+    });
+
+    res.json({ paidDrop, updatedCount: updateDrops.count });
+  } catch (e) {
+    console.error("Error creating paid drop:", e);
+    next(e);
+  }
+});
+
 // PATCH route to mark all unpaid drops as paid for a specific member
 router.patch(
   "/droppaid/:memberId",

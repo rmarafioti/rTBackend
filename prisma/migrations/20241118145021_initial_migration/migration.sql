@@ -41,9 +41,29 @@ CREATE TABLE "drop" (
     "memberOwes" INTEGER NOT NULL DEFAULT 0,
     "businessOwes" INTEGER NOT NULL DEFAULT 0,
     "paid" BOOLEAN NOT NULL DEFAULT false,
-    "paidDate" DATETIME,
-    "paidMessage" TEXT,
-    CONSTRAINT "drop_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "member" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    "paidDrop_id" INTEGER,
+    "paidNotice_id" INTEGER,
+    CONSTRAINT "drop_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "member" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "drop_paidDrop_id_fkey" FOREIGN KEY ("paidDrop_id") REFERENCES "paidDrop" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "drop_paidNotice_id_fkey" FOREIGN KEY ("paidNotice_id") REFERENCES "paidNotice" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "paidDrop" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "paidDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "payee" TEXT NOT NULL,
+    "paidMessage" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "paidNotice" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "paidDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "payee" TEXT NOT NULL,
+    "paidMessage" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL
 );
 
 -- CreateTable
