@@ -120,12 +120,12 @@ router.post("/createdrop", requireMemberRole, async (req, res, next) => {
 });
 
 // logged in member gets drop info by drop id
-router.get("/getdrop/:drop_id", requireMemberRole, async (req, res, next) => {
+router.get("/getdrop/:drop_id", async (req, res, next) => {
   try {
-    const member = res.locals.user;
+    const user = res.locals.user;
 
-    if (!member) {
-      return res.status(401).json({ error: "Member not authenticated" });
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
     }
 
     const { drop_id } = req.params;
@@ -135,7 +135,12 @@ router.get("/getdrop/:drop_id", requireMemberRole, async (req, res, next) => {
       include: { service: true },
     });
 
-    if (!getDrop || getDrop.member_id !== member.id) {
+    if (!getDrop) {
+      return res.status(403).json({ error: "Drop not found" });
+    }
+
+    // If the user is a member, ensure they can only access their own drops
+    if (user.role === "member" && getDrop.member_id !== user.id) {
       return res
         .status(403)
         .json({ error: "Not authorized to access this drop" });
