@@ -68,7 +68,7 @@ router.post("/business", requireOwnerRole, async (req, res, next) => {
   }
 });
 
-// POST route for an owner to mark a drop as paid
+// POST route for an owner to mark a drop as paid and create a paidDrop
 router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
   try {
     const owner = res.locals.user;
