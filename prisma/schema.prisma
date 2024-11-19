@@ -49,19 +49,41 @@ model member {
 
 //a member has a one to many relationship with the drop table connected by the member id
 model drop {
-  id           Int       @id @default(autoincrement())
-  member_id    Int
-  date         DateTime?
-  total        Int       @default(0)
-  memberCut    Int       @default(0)
-  businessCut  Int       @default(0)
-  memberOwes   Int       @default(0)
-  businessOwes Int       @default(0)
-  paid         Boolean   @default(false)
-  paidDate     DateTime?
-  paidMessage  String?
-  member       member    @relation(fields: [member_id], references: [id])
-  service      service[]
+  id            Int         @id @default(autoincrement())
+  member_id     Int
+  date          DateTime?
+  total         Int         @default(0)
+  memberCut     Int         @default(0)
+  businessCut   Int         @default(0)
+  memberOwes    Int         @default(0)
+  businessOwes  Int         @default(0)
+  paid          Boolean     @default(false)
+  member        member      @relation(fields: [member_id], references: [id])
+  service       service[]
+  paidDrop_id   Int?
+  paidDrop      paidDrop?   @relation(fields: [paidDrop_id], references: [id])
+  paidNotice_id Int?
+  paidNotice    paidNotice? @relation(fields: [paidNotice_id], references: [id])
+}
+
+//a drop has many to one relationship with the paid table
+model paidDrop {
+  id          Int      @id @default(autoincrement())
+  paidDate    DateTime @default(now())
+  payee       String
+  paidMessage String
+  amount      Int
+  drops       drop[]
+}
+
+//a drop has many to one relationship with the paid table
+model paidNotice {
+  id          Int      @id @default(autoincrement())
+  paidDate    DateTime @default(now())
+  payee       String
+  paidMessage String
+  amount      Int
+  drops       drop[]
 }
 
 //a drop has a one to manu relationship with the service table connected by the drop id
