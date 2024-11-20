@@ -112,45 +112,67 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
   }
 });
 
-//this route functionbality is now being used in the previous route
-// PATCH route to mark all unpaid drops as paid for a specific member
-/*router.patch(
-  "/droppaid/:memberId",
-  requireOwnerRole,
-  async (req, res, next) => {
-    try {
-      const owner = res.locals.user;
+// POST route for an owner to mark a drop as paid and create a paidDrop
+/*router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
+  try {
+    const owner = res.locals.user;
 
-      if (!owner) {
-        return res.status(401).json({ error: "Owner not authenticated" });
-      }
+    if (!owner) {
+      return res.status(401).json({ error: "Owner not authenticated" });
+    }
 
-      const { memberId } = req.params;
-      const { paidMessage } = req.body;
+    const { payee, paidMessage, amount, dropIds, memberId } = req.body;
 
-      // Log to check incoming data
-      console.log("Received memberId:", memberId);
-      console.log("Received paidMessage:", paidMessage);
+    if (!dropIds || dropIds.length === 0) {
+      return res.status(400).json({ error: "No drops specified for payment" });
+    }
 
-      // Update all unpaid drops for the given member
-      const updateDropsPaid = await prisma.drop.updateMany({
-        where: {
-          member_id: +memberId,
-          paid: false,
-        },
+    // Create the paidDrop record
+    const paidDrop = await prisma.paidDrop.create({
+      data: {
+        payee,
+        paidMessage,
+        amount,
+      },
+    });
+
+    // Update related drops and mark them as paid
+    const updateDrops = await prisma.drop.updateMany({
+      where: {
+        id: { in: dropIds },
+        paid: false,
+      },
+      data: {
+        paid: true,
+        paidDrop_id: paidDrop.id,
+      },
+    });
+
+    // Fetch the member to determine the current totals
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: "Member not found" });
+    }
+
+    // Update the member's totalOwe and totalOwed values
+    if (member.totalOwe === amount || member.totalOwed === amount) {
+      await prisma.member.update({
+        where: { id: memberId },
         data: {
-          paid: true,
-          paidDate: new Date(),
-          paidMessage: paidMessage,
+          totalOwe: member.totalOwe === amount ? 0 : member.totalOwe,
+          totalOwed: member.totalOwed === amount ? 0 : member.totalOwed,
         },
       });
-
-      res.json(updateDropsPaid);
-    } catch (e) {
-      console.error("Error updating drops:", e);
-      next(e);
     }
+
+    res.json({ paidDrop, updatedCount: updateDrops.count });
+  } catch (e) {
+    console.error("Error creating paid drop:", e);
+    next(e);
   }
-);*/
+});*/
 
 module.exports = router;
