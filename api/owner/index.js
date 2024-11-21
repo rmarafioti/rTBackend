@@ -79,21 +79,22 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
       return res.status(401).json({ error: "Owner not authenticated" });
     }
 
-    const { payee, paidMessage, amount, dropIds } = req.body;
+    const { payee, paidMessage, amount, dropIds, memberId } = req.body;
 
     if (!dropIds || dropIds.length === 0) {
       return res.status(400).json({ error: "No drops specified for payment" });
     }
 
+    // Create the paidDrop record
     const paidDrop = await prisma.paidDrop.create({
       data: {
         payee,
         paidMessage,
-        amount,
+        amount, // Ensure the amount is correctly passed from the request body
       },
     });
 
-    //update related drops and mark them as paid
+    // Update related drops and mark them as paid
     const updateDrops = await prisma.drop.updateMany({
       where: {
         id: { in: dropIds },
@@ -105,52 +106,29 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
       },
     });
 
+    // Fetch the member to determine the current totals
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: "Member not found" });
+    }
+
+    // Update the member's totalOwe and totalOwed values
+    await prisma.member.update({
+      where: { id: memberId },
+      data: {
+        totalOwe: member.totalOwe === paidDrop.amount ? 0 : member.totalOwe,
+        totalOwed: member.totalOwed === paidDrop.amount ? 0 : member.totalOwed,
+      },
+    });
+
     res.json({ paidDrop, updatedCount: updateDrops.count });
   } catch (e) {
     console.error("Error creating paid drop:", e);
     next(e);
   }
 });
-
-//this route functionbality is now being used in the previous route
-// PATCH route to mark all unpaid drops as paid for a specific member
-/*router.patch(
-  "/droppaid/:memberId",
-  requireOwnerRole,
-  async (req, res, next) => {
-    try {
-      const owner = res.locals.user;
-
-      if (!owner) {
-        return res.status(401).json({ error: "Owner not authenticated" });
-      }
-
-      const { memberId } = req.params;
-      const { paidMessage } = req.body;
-
-      // Log to check incoming data
-      console.log("Received memberId:", memberId);
-      console.log("Received paidMessage:", paidMessage);
-
-      // Update all unpaid drops for the given member
-      const updateDropsPaid = await prisma.drop.updateMany({
-        where: {
-          member_id: +memberId,
-          paid: false,
-        },
-        data: {
-          paid: true,
-          paidDate: new Date(),
-          paidMessage: paidMessage,
-        },
-      });
-
-      res.json(updateDropsPaid);
-    } catch (e) {
-      console.error("Error updating drops:", e);
-      next(e);
-    }
-  }
-);*/
 
 module.exports = router;
