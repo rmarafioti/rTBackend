@@ -71,7 +71,7 @@ router.post("/business", requireOwnerRole, async (req, res, next) => {
 });
 
 // POST route for an owner to mark a drop as paid and create a paidDrop
-router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
+/*router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
   try {
     const owner = res.locals.user;
 
@@ -110,10 +110,10 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
     console.error("Error creating paid drop:", e);
     next(e);
   }
-});
+});*/
 
 // POST route for an owner to mark a drop as paid and create a paidDrop
-/*router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
+router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
   try {
     const owner = res.locals.user;
 
@@ -132,7 +132,7 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
       data: {
         payee,
         paidMessage,
-        amount,
+        amount, // Ensure the amount is correctly passed from the request body
       },
     });
 
@@ -158,21 +158,19 @@ router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
     }
 
     // Update the member's totalOwe and totalOwed values
-    if (member.totalOwe === amount || member.totalOwed === amount) {
-      await prisma.member.update({
-        where: { id: memberId },
-        data: {
-          totalOwe: member.totalOwe === amount ? 0 : member.totalOwe,
-          totalOwed: member.totalOwed === amount ? 0 : member.totalOwed,
-        },
-      });
-    }
+    await prisma.member.update({
+      where: { id: memberId },
+      data: {
+        totalOwe: member.totalOwe === paidDrop.amount ? 0 : member.totalOwe,
+        totalOwed: member.totalOwed === paidDrop.amount ? 0 : member.totalOwed,
+      },
+    });
 
     res.json({ paidDrop, updatedCount: updateDrops.count });
   } catch (e) {
     console.error("Error creating paid drop:", e);
     next(e);
   }
-});*/
+});
 
 module.exports = router;
