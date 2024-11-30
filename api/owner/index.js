@@ -2,23 +2,19 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
-// Middleware to check if the user is a member
-const requireOwnerRole = (req, res, next) => {
+// Fisrt check if the user in an owner...
+router.use((req, res, next) => {
   if (res.locals.userRole !== "owner") {
-    return res.status(403).json({ error: "Access forbidden: Owners only." });
+    return res.status(403).json({ error: "Access forbidden: Owners only" });
   }
   next();
-};
+});
 
 // GET route to get logged-in owner's information
-router.get("/", requireOwnerRole, async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
     // Access the owner from res.locals, set by the middleware in api/index.js
     const owner = res.locals.user;
-
-    if (!owner) {
-      return res.status(401).json({ error: "Owner not authenticated" });
-    }
 
     // Query the database for the owner's details
     const ownerData = await prisma.owner.findUnique({
@@ -51,7 +47,7 @@ router.get("/", requireOwnerRole, async (req, res, next) => {
 });
 
 // POST route to create a new business
-router.post("/business", requireOwnerRole, async (req, res, next) => {
+router.post("/business", async (req, res, next) => {
   try {
     const { id: owner_id } = res.locals.user;
     const { businessName, code } = req.body;
@@ -71,7 +67,7 @@ router.post("/business", requireOwnerRole, async (req, res, next) => {
 });
 
 // POST route for an owner to mark a drop as paid and create a paidDrop
-router.post("/paydrops", requireOwnerRole, async (req, res, next) => {
+router.post("/paydrops", async (req, res, next) => {
   try {
     const owner = res.locals.user;
 
