@@ -3,41 +3,6 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
-// CHECK: logged in member gets there drop info by drop id owner uses this route to access all member drops
-router.get("/getdrop/:drop_id", async (req, res, next) => {
-  try {
-    const user = res.locals.user;
-
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    const { drop_id } = req.params;
-
-    const getDrop = await prisma.drop.findUnique({
-      where: { id: +drop_id },
-      include: { service: true },
-    });
-
-    if (!getDrop) {
-      return res.status(403).json({ error: "Drop not found" });
-    }
-
-    // If the user is a member, ensure they can only access their own drops
-    if (user.role === "member" && getDrop.member_id !== user.id) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to access this drop" });
-    }
-
-    // Send only the services as a response
-    res.json(getDrop);
-  } catch (error) {
-    console.error("Error retrieving drop:", error);
-    next(error);
-  }
-});
-
 // Fisrt check if the user in an member...
 router.use((req, res, next) => {
   if (res.locals.userRole !== "member") {
@@ -46,7 +11,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// CHECK: GET route to get logged-in member's information
+// GET route to get logged-in member's information
 router.get("/", async (req, res, next) => {
   try {
     // Access the member from res.locals, set by the middleware in api/index.js
@@ -85,7 +50,49 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// CHECK: POST route to link team member to a business
+// CHECK: Logged in member updates there member info when a drop is submitted
+//CAN THIS BE INCORPORATED as a POST to route.route /member ?
+
+router.post("/updatememberinfo/:id", async (req, res, next) => {
+  try {
+    const member = res.locals.user;
+
+    const { id } = req.params;
+    const { memberCut, memberOwes, businessOwes } = req.body;
+
+    // Fetch the latest member data from the database
+    const thisMember = await prisma.member.findUnique({
+      where: { id: +id },
+    });
+
+    if (!thisMember) {
+      return res.status(404).json({ error: "Member not found" });
+    }
+
+    const updatedMemberInfo = await prisma.member.update({
+      where: { id: +id },
+      data: {
+        takeHomeTotal: member.takeHomeTotal + +memberCut,
+        totalOwe: member.totalOwe + +memberOwes,
+        totalOwed: member.totalOwed + +businessOwes,
+      },
+    });
+
+    if (!updatedMemberInfo) {
+      return next({
+        status: 401,
+        message: "Update invalid, please try again",
+      });
+    }
+
+    res.json(updatedMemberInfo);
+  } catch (error) {
+    console.error("Error updating member information:", error);
+    next(error);
+  }
+});
+
+// POST route to link team member to a business
 router.post("/business", async (req, res, next) => {
   try {
     const { id: member_id } = res.locals.user;
@@ -118,7 +125,7 @@ router.post("/business", async (req, res, next) => {
   }
 });
 
-// CHECK: logged in member creates a drop
+// POST Logged-in member creates a drop
 router.post("/createdrop", async (req, res, next) => {
   try {
     // Access the member from res.locals, set by the middleware in api/index.js
@@ -146,7 +153,108 @@ router.post("/createdrop", async (req, res, next) => {
   }
 });
 
-// CHECK: logged in member gets all paid drops
+// router.route for /drops by ID
+router
+  .route("/drops/:drop_id")
+  // GET Logged-in member gets drops by ID
+  .get(async (req, res, next) => {
+    try {
+      const user = res.locals.user;
+      const { drop_id } = req.params;
+
+      const getDrop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: { service: true },
+      });
+
+      if (!getDrop) {
+        return res.status(403).json({ error: "Drop not found" });
+      }
+
+      // If the user is a member, ensure they can only access their own drops
+      if (user.role === "member" && getDrop.member_id !== user.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to access this drop" });
+      }
+
+      // Send only the services as a response
+      res.json(getDrop);
+    } catch (error) {
+      console.error("Error retrieving drop:", error);
+      next(error);
+    }
+  })
+  // POST Logged-in member can update a drop
+  .post(async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+      const { drop_id } = req.params;
+      let { date, total, memberCut, businessCut, memberOwes, businessOwes } =
+        req.body;
+
+      const validDrop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+      });
+
+      if (!validDrop || validDrop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this drop." });
+      }
+
+      // Parse date string to a Date object
+      date = date ? new Date(date) : null;
+
+      const updatedDrop = await prisma.drop.update({
+        where: { id: +drop_id },
+        data: {
+          date,
+          total,
+          memberCut,
+          businessCut,
+          memberOwes,
+          businessOwes,
+        },
+      });
+
+      // Send only the services as a response
+      res.json(updatedDrop);
+    } catch (error) {
+      console.error("Error updating drop:", error);
+      next(error);
+    }
+  })
+  // DELETE Logged-in member can delete a drop
+  .delete(async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+      const { drop_id } = req.params;
+      console.log("Received drop_id:", drop_id); // Debugging log
+
+      const drop = await prisma.drop.findUnique({
+        where: { id: +drop_id },
+        include: { service: true },
+      });
+
+      if (!drop || drop.member_id !== member.id) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this drop" });
+      }
+
+      const deleteDrop = await prisma.drop.delete({
+        where: { id: +drop_id },
+      });
+
+      res.json(deleteDrop);
+    } catch (e) {
+      console.error("Error deleting drop", e);
+      next(e);
+    }
+  });
+
+// GET Logged-in member gets all paid drops
 router.get("/getpaiddrops", async (req, res, next) => {
   try {
     const member = res.locals.user;
@@ -172,36 +280,7 @@ router.get("/getpaiddrops", async (req, res, next) => {
   }
 });
 
-// WILL USE: logged in member can delete a drop
-router.delete("/deletedrop/:drop_id", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { drop_id } = req.params;
-
-    const drop = await prisma.drop.findUnique({
-      where: { id: +drop_id },
-      include: { service: true },
-    });
-
-    if (!drop || drop.member_id !== member.id) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to delete this drop" });
-    }
-
-    const deleteDrop = await prisma.drop.delete({
-      where: { id: +drop_id },
-    });
-
-    res.json(deleteDrop);
-  } catch (e) {
-    console.error("Error deleting drop", e);
-    next(e);
-  }
-});
-
-// CHECK: logged in member create a service
+// POST Logged-in member create a service
 router.post("/createservice/:drop_id", async (req, res, next) => {
   try {
     // Access the member from res.locals, set by the middleware in api/index.js
@@ -255,90 +334,8 @@ router.post("/createservice/:drop_id", async (req, res, next) => {
   }
 });
 
-// CHECK: Logged-in member can update a drop
-router.post("/updatedrop/:drop_id", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { drop_id } = req.params;
-    let { date, total, memberCut, businessCut, memberOwes, businessOwes } =
-      req.body;
-
-    const validDrop = await prisma.drop.findUnique({
-      where: { id: +drop_id },
-    });
-
-    if (!validDrop || validDrop.member_id !== member.id) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to update this drop." });
-    }
-
-    // Parse date string to a Date object
-    date = date ? new Date(date) : null;
-
-    const updatedDrop = await prisma.drop.update({
-      where: { id: +drop_id },
-      data: {
-        date,
-        total,
-        memberCut,
-        businessCut,
-        memberOwes,
-        businessOwes,
-      },
-    });
-
-    // Send only the services as a response
-    res.json(updatedDrop);
-  } catch (error) {
-    console.error("Error updating drop:", error);
-    next(error);
-  }
-});
-
-// CHECK: Logged in member updates there member info when a drop is submitted
-
-router.post("/updatememberinfo/:id", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { id } = req.params;
-    const { memberCut, memberOwes, businessOwes } = req.body;
-
-    // Fetch the latest member data from the database
-    const thisMember = await prisma.member.findUnique({
-      where: { id: +id },
-    });
-
-    if (!thisMember) {
-      return res.status(404).json({ error: "Member not found" });
-    }
-
-    const updatedMemberInfo = await prisma.member.update({
-      where: { id: +id },
-      data: {
-        takeHomeTotal: member.takeHomeTotal + +memberCut,
-        totalOwe: member.totalOwe + +memberOwes,
-        totalOwed: member.totalOwed + +businessOwes,
-      },
-    });
-
-    if (!updatedMemberInfo) {
-      return next({
-        status: 401,
-        message: "Update invalid, please try again",
-      });
-    }
-
-    res.json(updatedMemberInfo);
-  } catch (error) {
-    console.error("Error updating member information:", error);
-    next(error);
-  }
-});
-
 // CHECK: PATCH route to update owner/business take home total
+//CAN THIS BE INCORPORATED INTO ANOTHER ROUTE?
 router.patch("/businesstotalupdate", async (req, res, next) => {
   try {
     const member = res.locals.user;
@@ -374,7 +371,7 @@ router.patch("/businesstotalupdate", async (req, res, next) => {
   }
 });
 
-// CHECK: logged in member can create a paid notice
+// POST Logged-in member can create a paid notice
 router.post("/paynotice", async (req, res, next) => {
   try {
     const member = res.locals.user;

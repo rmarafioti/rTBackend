@@ -66,6 +66,49 @@ router.post("/business", async (req, res, next) => {
   }
 });
 
+// GET logged-in owner can access members drops by id
+router.get("/drops/:drop_id", async (req, res, next) => {
+  try {
+    const owner = res.locals.user;
+
+    if (!owner) {
+      return res.status(401).json({ error: "Owner not authenticated" });
+    }
+
+    const { drop_id } = req.params;
+
+    // Fetch the drop and eagerly load related data
+    const getDrop = await prisma.drop.findUnique({
+      where: { id: +drop_id },
+      include: {
+        service: true, // Include services for the drop
+        member: {
+          include: {
+            business: true, // Include the business the member belongs to
+          },
+        },
+      },
+    });
+
+    // Ensure all relationships are loaded and valid
+    if (
+      !getDrop ||
+      !getDrop.member ||
+      !getDrop.member.business ||
+      getDrop.member.business.owner_id !== owner.id
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to access this drop" });
+    }
+
+    res.json(getDrop);
+  } catch (error) {
+    console.error("Error retrieving drop:", error);
+    next(error);
+  }
+});
+
 // POST route for an owner to mark a drop as paid and create a paidDrop
 router.post("/paydrops", async (req, res, next) => {
   try {
