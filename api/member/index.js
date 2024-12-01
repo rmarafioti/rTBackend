@@ -230,6 +230,7 @@ router
     try {
       const member = res.locals.user;
       const { drop_id } = req.params;
+      console.log("Received drop_id:", drop_id); // Debugging log
 
       const drop = await prisma.drop.findUnique({
         where: { id: +drop_id },
