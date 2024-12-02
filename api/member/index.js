@@ -11,9 +11,10 @@ router.use((req, res, next) => {
   next();
 });
 
-// GET route to get logged-in member's information
+// router.route for /member
 router
   .route("/")
+  // GET logged-in member's information
   .get(async (req, res, next) => {
     try {
       // Access the member from res.locals, set by the middleware in api/index.js
@@ -51,7 +52,7 @@ router
       next(error);
     }
   })
-  // Logged in member updates there member info when a drop is submitted
+  // POST Logged-in member updates their member info when a drop is submitted
   .post(async (req, res, next) => {
     try {
       const member = res.locals.user;
@@ -216,7 +217,29 @@ router
         },
       });
 
-      // Send only the services as a response
+      if (businessCut) {
+        const business = await prisma.business.findUnique({
+          where: { id: member.business_id },
+          include: { owner: true },
+        });
+
+        if (!business || !business.owner) {
+          console.error("Business or owner not found");
+          return res
+            .status(404)
+            .json({ error: "Business or owner not found." });
+        }
+
+        const owner = business.owner;
+
+        const updatedOwner = await prisma.owner.update({
+          where: { id: owner.id },
+          data: {
+            takeHomeTotal: owner.takeHomeTotal + +businessCut,
+          },
+        });
+      }
+
       res.json(updatedDrop);
     } catch (error) {
       console.error("Error updating drop:", error);
@@ -232,13 +255,35 @@ router
 
       const drop = await prisma.drop.findUnique({
         where: { id: +drop_id },
-        include: { service: true },
+        include: {
+          service: true,
+          member: {
+            include: {
+              business: {
+                include: { owner: true },
+              },
+            },
+          },
+        },
       });
 
       if (!drop || drop.member_id !== member.id) {
         return res
           .status(403)
           .json({ error: "Not authorized to delete this drop" });
+      }
+
+      const businessCut = drop.businessCut;
+
+      if (businessCut && drop.member.business && drop.member.business.owner) {
+        const owner = drop.member.business.owner;
+
+        await prisma.owner.update({
+          where: { id: owner.id },
+          data: {
+            takeHomeTotal: owner.takeHomeTotal - businessCut,
+          },
+        });
       }
 
       const deleteDrop = await prisma.drop.delete({
@@ -328,43 +373,6 @@ router.post("/createservice/:drop_id", async (req, res, next) => {
     res.json(newService);
   } catch (e) {
     console.error("Error creating a service:", e);
-    next(e);
-  }
-});
-
-// CHECK: PATCH route to update owner/business take home total
-//CAN THIS BE INCORPORATED INTO ANOTHER ROUTE?
-router.patch("/businesstotalupdate", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { businessCut } = req.body;
-
-    if (!businessCut) {
-      return res.status(400).json({ error: "Missing businessCut" });
-    }
-
-    // Fetch the latest member data from the database
-    const business = await prisma.business.findUnique({
-      where: { id: member.business_id },
-      include: { owner: true },
-    });
-
-    if (!business || !business.owner) {
-      return res.status(404).json({ error: "Business or owner not found" });
-    }
-
-    const owner = business.owner;
-
-    const updateBusinessTotal = await prisma.owner.update({
-      where: { id: owner.id },
-      data: {
-        takeHomeTotal: owner.takeHomeTotal + +businessCut,
-      },
-    });
-
-    res.json(updateBusinessTotal);
-  } catch (e) {
     next(e);
   }
 });
