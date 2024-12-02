@@ -12,85 +12,83 @@ router.use((req, res, next) => {
 });
 
 // GET route to get logged-in member's information
-router.get("/", async (req, res, next) => {
-  try {
-    // Access the member from res.locals, set by the middleware in api/index.js
-    const member = res.locals.user;
+router
+  .route("/")
+  .get(async (req, res, next) => {
+    try {
+      // Access the member from res.locals, set by the middleware in api/index.js
+      const member = res.locals.user;
 
-    // Query the database for the member's details
-    const memberData = await prisma.member.findUnique({
-      where: { id: member.id },
-      include: {
-        business: {
-          include: {
-            businessMember: {
-              where: { id: { not: member.id } }, // Exclude the logged-in member from the team list
+      // Query the database for the member's details
+      const memberData = await prisma.member.findUnique({
+        where: { id: member.id },
+        include: {
+          business: {
+            include: {
+              businessMember: {
+                where: { id: { not: member.id } }, // Exclude the logged-in member from the team list
+              },
+            },
+          },
+          drop: {
+            include: {
+              service: true,
+              paidDrop: true,
+              paidNotice: true,
             },
           },
         },
-        drop: {
-          include: {
-            service: true,
-            paidDrop: true,
-            paidNotice: true,
-          },
-        },
-      },
-    });
-
-    if (!memberData) {
-      return res.status(404).json({ error: "Member not found" });
-    }
-
-    // Send the member's information as a response
-    res.json(memberData);
-  } catch (error) {
-    console.error("Error retrieving member information:", error);
-    next(error);
-  }
-});
-
-// CHECK: Logged in member updates there member info when a drop is submitted
-//CAN THIS BE INCORPORATED as a POST to route.route /member ?
-
-router.post("/updatememberinfo/:id", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { id } = req.params;
-    const { memberCut, memberOwes, businessOwes } = req.body;
-
-    // Fetch the latest member data from the database
-    const thisMember = await prisma.member.findUnique({
-      where: { id: +id },
-    });
-
-    if (!thisMember) {
-      return res.status(404).json({ error: "Member not found" });
-    }
-
-    const updatedMemberInfo = await prisma.member.update({
-      where: { id: +id },
-      data: {
-        takeHomeTotal: member.takeHomeTotal + +memberCut,
-        totalOwe: member.totalOwe + +memberOwes,
-        totalOwed: member.totalOwed + +businessOwes,
-      },
-    });
-
-    if (!updatedMemberInfo) {
-      return next({
-        status: 401,
-        message: "Update invalid, please try again",
       });
-    }
 
-    res.json(updatedMemberInfo);
-  } catch (error) {
-    console.error("Error updating member information:", error);
-    next(error);
-  }
-});
+      if (!memberData) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      // Send the member's information as a response
+      res.json(memberData);
+    } catch (error) {
+      console.error("Error retrieving member information:", error);
+      next(error);
+    }
+  })
+  // Logged in member updates there member info when a drop is submitted
+  .post(async (req, res, next) => {
+    try {
+      const member = res.locals.user;
+
+      const { memberCut, memberOwes, businessOwes } = req.body;
+
+      // Fetch the latest member data from the database
+      const thisMember = await prisma.member.findUnique({
+        where: { id: member.id },
+      });
+
+      if (!thisMember) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+
+      const updatedMemberInfo = await prisma.member.update({
+        where: { id: member.id },
+        data: {
+          takeHomeTotal: member.takeHomeTotal + +memberCut,
+          totalOwe: member.totalOwe + +memberOwes,
+          totalOwed: member.totalOwed + +businessOwes,
+        },
+      });
+
+      if (!updatedMemberInfo) {
+        return next({
+          status: 401,
+          message: "Update invalid, please try again",
+        });
+      }
+
+      res.json(updatedMemberInfo);
+    } catch (error) {
+      console.error("Error updating member information:", error);
+      next(error);
+    }
+  });
 
 // POST route to link team member to a business
 router.post("/business", async (req, res, next) => {
