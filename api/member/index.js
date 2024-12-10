@@ -163,7 +163,8 @@ router
 
       const getDrop = await prisma.drop.findUnique({
         where: { id: +drop_id },
-        include: { service: true },
+        include: { service: true, paidDrop: true },
+        /* include paid drop */
       });
 
       if (!getDrop) {
