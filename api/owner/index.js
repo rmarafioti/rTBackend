@@ -81,7 +81,8 @@ router.get("/drops/:drop_id", async (req, res, next) => {
     const getDrop = await prisma.drop.findUnique({
       where: { id: +drop_id },
       include: {
-        service: true, // Include services for the drop
+        service: true,
+        paidDrop: true, // Include services for the drop
         member: {
           include: {
             business: true, // Include the business the member belongs to
