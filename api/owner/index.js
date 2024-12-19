@@ -66,6 +66,55 @@ router.post("/business", async (req, res, next) => {
   }
 });
 
+// PATCH route to update a members percentage
+router.patch("/updatepercentage", async (req, res, next) => {
+  try {
+    const owner = res.locals.user;
+
+    if (!owner) {
+      return res.status(401).json({ error: "Owner not authenticated" });
+    }
+
+    const { memberId, percentage } = req.body;
+
+    if (!memberId || typeof percentage !== "number") {
+      return res
+        .status(400)
+        .json({ error: "Invalid member ID or percentage value" });
+    }
+
+    // Fetch the member to update their percentage
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+      include: {
+        business: {
+          include: {
+            owner: true,
+          },
+        },
+      },
+    });
+
+    if (!member || member.business.owner_id !== owner.id) {
+      return res.status(403).json({
+        error: "Not authorized to update this member's percentage",
+      });
+    }
+
+    const updatedPercentage = await prisma.member.update({
+      where: { id: +memberId },
+      data: {
+        percentage: percentage,
+      },
+    });
+
+    res.json(updatedPercentage);
+  } catch (error) {
+    console.error("Error updating member's percentage:", error);
+    next(error);
+  }
+});
+
 // GET logged-in owner can access members drops by id
 router.get("/drops/:drop_id", async (req, res, next) => {
   try {
