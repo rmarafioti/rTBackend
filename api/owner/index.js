@@ -115,6 +115,91 @@ router.patch("/updatepercentage", async (req, res, next) => {
   }
 });
 
+// GET logged-in owner can access all member drops sorted by year and month
+router.get("/drops/:year/:month/:memberId", async (req, res, next) => {
+  try {
+    const owner = res.locals.user;
+
+    if (!owner) {
+      return res.status(401).json({ error: "Owner not authenticated" });
+    }
+
+    const { year, month, memberId } = req.params;
+
+    // Validate year and month
+    const yearInt = parseInt(year, 10);
+    const monthInt = parseInt(month, 10);
+
+    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: "Invalid year parameter" });
+    }
+
+    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+      return res.status(400).json({ error: "Invalid month parameter" });
+    }
+
+    // Fetch the member by their ID
+    const member = await prisma.member.findUnique({
+      where: { id: +memberId },
+      include: {
+        business: true, // Include the business the member belongs to
+      },
+    });
+
+    // Ensure the member exists and is part of the owner's business
+    if (!member || member.business?.owner_id !== owner.id) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to access this member's drops" });
+    }
+
+    // Calculate start and end dates for the month
+    const startDate = new Date(
+      `${yearInt}-${monthInt.toString().padStart(2, "0")}-01`
+    );
+    const endDate = new Date(
+      `${yearInt}-${monthInt.toString().padStart(2, "0")}-31`
+    );
+
+    // Fetch drops for the member within the specified date range
+    const drops = await prisma.drop.findMany({
+      where: {
+        member_id: +memberId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        service: true, // Include related services
+      },
+    });
+
+    // If no drops are found, return a 404 error
+    if (!drops || drops.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No drops found for the given member and date range" });
+    }
+
+    // Generate the month name
+    const monthName = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+    }).format(new Date(yearInt, monthInt - 1, 1));
+
+    // Return the drops along with the member name and month name
+    res.json({
+      member: member.memberName,
+      drops,
+      month: monthName,
+      year: yearInt,
+    });
+  } catch (error) {
+    console.error("Error retrieving drops:", error);
+    next(error);
+  }
+});
+
 // GET logged-in owner can access members drops by id
 router.get("/drops/:drop_id", async (req, res, next) => {
   try {
