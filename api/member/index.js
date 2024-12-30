@@ -152,33 +152,67 @@ router.post("/createdrop", async (req, res, next) => {
   }
 });
 
+// GET Logged-in member gets drops by year
+router.get("/dropsMonth/:year", async (req, res, next) => {
+  try {
+    const member = res.locals.user;
+
+    const { year } = req.params;
+    const yearInt = parseInt(year, 10);
+
+    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: "Invalid year parameter" });
+    }
+
+    // Fetch drops for the logged-in member within the year
+    const drops = await prisma.drop.findMany({
+      where: {
+        member_id: member.id,
+        date: {
+          gte: new Date(`${yearInt}-01-01`),
+          lte: new Date(`${yearInt}-12-31`),
+        },
+      },
+      include: {
+        service: true,
+        paidDrop: true,
+      },
+    });
+
+    res.json({ drops, year: yearInt });
+  } catch (error) {
+    console.error("Error retrieving drops by year:", error);
+    next(error);
+  }
+});
+
 // router.route for /drops by ID
 router
   .route("/drops/:drop_id")
   // GET Logged-in member gets drops by ID
   .get(async (req, res, next) => {
     try {
-      const user = res.locals.user;
+      const member = res.locals.user; // Assumes middleware sets this
       const { drop_id } = req.params;
 
+      // Fetch the drop from the database
       const getDrop = await prisma.drop.findUnique({
         where: { id: +drop_id },
         include: { service: true, paidDrop: true },
-        /* include paid drop */
       });
 
       if (!getDrop) {
-        return res.status(403).json({ error: "Drop not found" });
+        return res.status(404).json({ error: "Drop not found" });
       }
 
-      // If the user is a member, ensure they can only access their own drops
-      if (user.role === "member" && getDrop.member_id !== user.id) {
+      // Ensure the user is authorized to access this drop
+      if (!member || getDrop.member_id !== member.id) {
         return res
           .status(403)
           .json({ error: "Not authorized to access this drop" });
       }
 
-      // Send only the services as a response
+      // Return the drop details
       res.json(getDrop);
     } catch (error) {
       console.error("Error retrieving drop:", error);
@@ -254,10 +288,10 @@ router
       const { drop_id } = req.params;
       console.log("Received drop_id:", drop_id); // Debugging log
 
+      // Fetch the drop to verify ownership and get related data
       const drop = await prisma.drop.findUnique({
         where: { id: +drop_id },
         include: {
-          service: true,
           member: {
             include: {
               business: {
@@ -274,9 +308,11 @@ router
           .json({ error: "Not authorized to delete this drop" });
       }
 
-      const businessCut = drop.businessCut;
+      // Extract values from the drop
+      const { memberCut, businessCut, memberOwes, businessOwes } = drop;
 
-      if (businessCut && drop.member.business && drop.member.business.owner) {
+      // Adjust the business owner's takeHomeTotal if businessCut exists
+      if (businessCut && drop.member.business?.owner) {
         const owner = drop.member.business.owner;
 
         await prisma.owner.update({
@@ -287,6 +323,23 @@ router
         });
       }
 
+      // Adjust the member's financial totals
+      await prisma.member.update({
+        where: { id: member.id },
+        data: {
+          takeHomeTotal: {
+            decrement: memberCut || 0, // Subtract the member's cut
+          },
+          totalOwe: {
+            decrement: memberOwes || 0, // Subtract member's owe amount
+          },
+          totalOwed: {
+            decrement: businessOwes || 0, // Subtract the owed amount to the member
+          },
+        },
+      });
+
+      // Delete the drop
       const deleteDrop = await prisma.drop.delete({
         where: { id: +drop_id },
       });
