@@ -43,3 +43,4 @@ router.use(async (req, res, next) => {
 router.use("/auth", require("./auth"));
 router.use("/owner", require("./owner"));
 router.use("/member", require("./member"));
+router.use("/business", require("./business"));

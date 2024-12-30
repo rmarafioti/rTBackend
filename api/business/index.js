@@ -2,16 +2,15 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
-// GET request to retrive business info for buisness name on onboard form
+// GET request to retrieve all businesses
 router.get("/", async (req, res, next) => {
   try {
-    const businessData = await prisma.business.findMany({
-      where: { id: business.id },
-    });
-
-    res.json(businessData);
+    const businessData = await prisma.business.findMany(); // Fetch all businesses
+    res.json(businessData); // Return the data as JSON
   } catch (error) {
     console.error("Error retrieving business information:", error);
     next(error);
   }
 });
+
+module.exports = router;
