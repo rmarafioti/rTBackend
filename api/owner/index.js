@@ -159,11 +159,11 @@ router.get("/drops/:year/:memberId", async (req, res, next) => {
       },
     });
 
-    if (!drops || drops.length === 0) {
+    /*if (!drops || drops.length === 0) {
       return res
         .status(404)
         .json({ error: "No drops found for the given year" });
-    }
+    }*/
 
     res.json({ member: member.memberName, drops, year: yearInt });
   } catch (error) {
