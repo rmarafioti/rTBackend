@@ -26,82 +26,6 @@ router.use((req, res, next) => {
   next();
 });
 
-//use this route for the archive month feature
-// GET Owner can access all member drops for a specific year by id / member can access their drops for a specific year by id
-router.get("/drops/:year/:memberId", async (req, res, next) => {
-  try {
-    const user = res.locals.user; // Retrieve the authenticated user
-    const { year, memberId } = req.params;
-    const yearInt = parseInt(year, 10);
-
-    // Validate the year parameter
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: "Invalid year parameter" });
-    }
-
-    // Fetch the drops based on the user's role
-    let drops;
-
-    if (user.role === "owner") {
-      // Fetch the member to validate their business belongs to the owner
-      const member = await prisma.member.findUnique({
-        where: { id: +memberId },
-        include: {
-          business: true,
-        },
-      });
-
-      if (!member || member.business?.owner_id !== user.id) {
-        return res
-          .status(403)
-          .json({ error: "Not authorized to access this member's drops" });
-      }
-
-      // Fetch all drops for the member within the year
-      drops = await prisma.drop.findMany({
-        where: {
-          member_id: +memberId,
-          date: {
-            gte: new Date(`${yearInt}-01-01`),
-            lte: new Date(`${yearInt}-12-31`),
-          },
-        },
-        include: {
-          service: true,
-        },
-      });
-    } else if (user.role === "member") {
-      // Members can only access their own drops
-      if (+memberId !== user.id) {
-        return res
-          .status(403)
-          .json({ error: "Not authorized to access other members' drops" });
-      }
-
-      // Fetch all drops for the authenticated member within the year
-      drops = await prisma.drop.findMany({
-        where: {
-          member_id: user.id,
-          date: {
-            gte: new Date(`${yearInt}-01-01`),
-            lte: new Date(`${yearInt}-12-31`),
-          },
-        },
-        include: {
-          service: true,
-        },
-      });
-    } else {
-      return res.status(403).json({ error: "Access forbidden" });
-    }
-
-    res.json({ drops, year: yearInt });
-  } catch (error) {
-    console.error("Error retrieving drops:", error);
-    next(error);
-  }
-});
-
 //use is route for the member drop feature
 // GET logged-in owner can access members drops by id / member can access their drops by id.
 router.get("/drops/:drop_id", async (req, res, next) => {
@@ -153,6 +77,72 @@ router.get("/drops/:drop_id", async (req, res, next) => {
     res.json(getDrop);
   } catch (error) {
     console.error("Error retrieving drop:", error);
+    next(error);
+  }
+});
+
+router.get("/alldrops/:memberId?", async (req, res, next) => {
+  try {
+    const user = res.locals.user;
+    const role = res.locals.userRole;
+    const { memberId } = req.params;
+
+    console.log("User Role:", role);
+    console.log("Authenticated User:", user);
+
+    if (!role) {
+      return res.status(403).json({ error: "Access forbidden: Invalid role" });
+    }
+
+    let drops;
+
+    if (role === "owner") {
+      if (memberId) {
+        drops = await prisma.drop.findMany({
+          where: {
+            member_id: parseInt(memberId, 10),
+            member: {
+              business: {
+                owner_id: user.id,
+              },
+            },
+          },
+          include: {
+            member: true,
+            service: true,
+          },
+        });
+      } else {
+        drops = await prisma.drop.findMany({
+          where: {
+            member: {
+              business: {
+                owner_id: user.id,
+              },
+            },
+          },
+          include: {
+            member: true,
+            service: true,
+          },
+        });
+      }
+    } else if (role === "member") {
+      drops = await prisma.drop.findMany({
+        where: {
+          member_id: user.id,
+        },
+        include: {
+          service: true,
+        },
+      });
+    } else {
+      return res.status(403).json({ error: "Access forbidden: Invalid role" });
+    }
+
+    res.json({ drops });
+  } catch (error) {
+    console.error("Error fetching drops:", error);
     next(error);
   }
 });

@@ -115,63 +115,6 @@ router.patch("/updatepercentage", async (req, res, next) => {
   }
 });
 
-// GET logged-in owner can access all member drops for a specific year
-router.get("/drops/:year/:memberId", async (req, res, next) => {
-  try {
-    const owner = res.locals.user;
-
-    if (!owner) {
-      return res.status(401).json({ error: "Owner not authenticated" });
-    }
-
-    const { year, memberId } = req.params;
-    const yearInt = parseInt(year, 10);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: "Invalid year parameter" });
-    }
-
-    // Fetch the member by their ID
-    const member = await prisma.member.findUnique({
-      where: { id: +memberId },
-      include: {
-        business: true, // Include the business the member belongs to
-      },
-    });
-
-    if (!member || member.business?.owner_id !== owner.id) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to access this member's drops" });
-    }
-
-    // Fetch drops for the member within the year
-    const drops = await prisma.drop.findMany({
-      where: {
-        member_id: +memberId,
-        date: {
-          gte: new Date(`${yearInt}-01-01`),
-          lte: new Date(`${yearInt}-12-31`),
-        },
-      },
-      include: {
-        service: true,
-      },
-    });
-
-    /*if (!drops || drops.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "No drops found for the given year" });
-    }*/
-
-    res.json({ member: member.memberName, drops, year: yearInt });
-  } catch (error) {
-    console.error("Error retrieving drops:", error);
-    next(error);
-  }
-});
-
 // GET logged-in owner can access members drops by id
 router.get("/drops/:drop_id", async (req, res, next) => {
   try {

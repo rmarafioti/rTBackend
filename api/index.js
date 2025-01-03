@@ -11,14 +11,14 @@ router.use(async (req, res, next) => {
   const token = authHeader?.split(" ")[1]; // Expect "Bearer <token>"
 
   if (!authHeader || !token) {
-    return next();
+    return next(); // Allow unauthenticated access to public routes
   }
 
   try {
-    const { id, role } = jwt.verify(token);
+    const { id, role } = jwt.verify(token); // Decode token and get role
     res.locals.userRole = role;
 
-    // Attempt to find the user based on their role
+    // Find the user based on the role
     let user;
     if (role === "owner") {
       user = await prisma.owner.findUnique({ where: { id } });
@@ -26,7 +26,7 @@ router.use(async (req, res, next) => {
       user = await prisma.member.findUnique({ where: { id } });
     }
 
-    // If the user is found, attach to res.locals
+    // Attach the user and role to res.locals if valid
     if (user) {
       res.locals.user = user;
       return next();
