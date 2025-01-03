@@ -152,40 +152,6 @@ router.post("/createdrop", async (req, res, next) => {
   }
 });
 
-// GET Logged-in member gets drops by year
-router.get("/dropsMonth/:year", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const { year } = req.params;
-    const yearInt = parseInt(year, 10);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: "Invalid year parameter" });
-    }
-
-    // Fetch drops for the logged-in member within the year
-    const drops = await prisma.drop.findMany({
-      where: {
-        member_id: member.id,
-        date: {
-          gte: new Date(`${yearInt}-01-01`),
-          lte: new Date(`${yearInt}-12-31`),
-        },
-      },
-      include: {
-        service: true,
-        paidDrop: true,
-      },
-    });
-
-    res.json({ drops, year: yearInt });
-  } catch (error) {
-    console.error("Error retrieving drops by year:", error);
-    next(error);
-  }
-});
-
 // router.route for /drops by ID
 router
   .route("/drops/:drop_id")
