@@ -317,32 +317,6 @@ router
     }
   });
 
-// GET Logged-in member gets all paid drops
-router.get("/getpaiddrops", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const paidDrops = await prisma.drop.findMany({
-      where: {
-        member_id: member.id,
-        paid: true,
-      },
-      include: {
-        service: true,
-      },
-    });
-
-    if (!paidDrops.length === 0) {
-      return res.status(403).json({ error: "No paid drops found" });
-    }
-
-    res.json(paidDrops);
-  } catch (e) {
-    console.error("Error getting drops:", e);
-    next(e);
-  }
-});
-
 // POST Logged-in member create a service
 router.post("/createservice/:drop_id", async (req, res, next) => {
   try {
