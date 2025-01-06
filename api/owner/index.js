@@ -220,4 +220,61 @@ router.post("/paydrops", async (req, res, next) => {
   }
 });
 
+// Route to get drops for a specific member in a specific month and year
+router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
+  try {
+    const { memberId, year, month } = req.params;
+    const user = res.locals.user;
+    const role = res.locals.userRole;
+
+    console.log("Filtering drops for memberId:", memberId);
+    console.log("Requested year:", year, "Requested month:", month);
+
+    if (!role) {
+      return res.status(403).json({ error: "Access forbidden: Invalid role" });
+    }
+
+    if (role === "owner") {
+      // Fetch drops for a specific member
+      const drops = await prisma.drop.findMany({
+        where: {
+          member_id: parseInt(memberId, 10),
+          member: {
+            business: {
+              owner_id: user.id,
+            },
+          },
+          date: {
+            gte: new Date(year, month - 1, 1), // Start of the month
+            lt: new Date(year, month, 0), // End of the month (last day)
+          },
+        },
+        include: {
+          member: true,
+          service: true,
+        },
+      });
+
+      // Fetch member details
+      const memberDetails = await prisma.member.findUnique({
+        where: {
+          id: parseInt(memberId, 10),
+        },
+        select: {
+          memberName: true,
+        },
+      });
+
+      res.json({ drops, memberDetails });
+    } else {
+      return res
+        .status(403)
+        .json({ error: "Access forbidden: Not authorized" });
+    }
+  } catch (error) {
+    console.error("Error fetching member drops:", error);
+    next(error);
+  }
+});
+
 module.exports = router;

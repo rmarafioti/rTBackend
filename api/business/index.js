@@ -81,68 +81,56 @@ router.get("/drops/:drop_id", async (req, res, next) => {
   }
 });
 
-router.get("/alldrops/:memberId?", async (req, res, next) => {
+router.get("/memberdrops/:memberId", async (req, res, next) => {
   try {
     const user = res.locals.user;
     const role = res.locals.userRole;
     const { memberId } = req.params;
-
-    console.log("User Role:", role);
-    console.log("Authenticated User:", user);
+    console.log("Filtering drops for memberId:", memberId);
 
     if (!role) {
       return res.status(403).json({ error: "Access forbidden: Invalid role" });
     }
 
-    let drops;
+    let drops = [];
+    let memberDetails = null;
 
     if (role === "owner") {
-      if (memberId) {
-        drops = await prisma.drop.findMany({
-          where: {
-            member_id: parseInt(memberId, 10),
-            member: {
-              business: {
-                owner_id: user.id,
-              },
-            },
-          },
-          include: {
-            member: true,
-            service: true,
-          },
-        });
-      } else {
-        drops = await prisma.drop.findMany({
-          where: {
-            member: {
-              business: {
-                owner_id: user.id,
-              },
-            },
-          },
-          include: {
-            member: true,
-            service: true,
-          },
-        });
-      }
-    } else if (role === "member") {
+      // Fetch drops for the specific member
       drops = await prisma.drop.findMany({
         where: {
-          member_id: user.id,
+          member_id: parseInt(memberId, 10),
+          member: {
+            business: {
+              owner_id: user.id,
+            },
+          },
         },
         include: {
+          member: true,
           service: true,
         },
       });
-    } else {
-      return res.status(403).json({ error: "Access forbidden: Invalid role" });
+
+      // Fetch member details (name)
+      memberDetails = await prisma.member.findUnique({
+        where: {
+          id: parseInt(memberId, 10),
+        },
+        select: {
+          memberName: true,
+        },
+      });
     }
 
-    res.json({ drops });
+    // If no drops found or memberName is missing, fallback
+    if (!memberDetails) {
+      memberDetails = { memberName: "Unknown Member" };
+    }
+
+    res.json({ drops, memberDetails });
   } catch (error) {
-    console.error("Error fetching drops:", error);
+    console.error("Error fetching drops by memberId:", error);
     next(error);
   }
 });

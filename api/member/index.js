@@ -435,4 +435,36 @@ router.post("/paynotice", async (req, res, next) => {
   }
 });
 
+// Route to get all drops for a logged-in member
+router.get("/memberdrops", async (req, res, next) => {
+  try {
+    const user = res.locals.user; // Get the authenticated user
+    const role = res.locals.userRole; // Get the role of the user
+
+    console.log("User Role:", role);
+    console.log("Authenticated User:", user);
+
+    if (!role || role !== "member") {
+      return res
+        .status(403)
+        .json({ error: "Access forbidden: Not authorized" });
+    }
+
+    // Fetch all drops for the logged-in member
+    const drops = await prisma.drop.findMany({
+      where: {
+        member_id: user.id, // Get drops only for the logged-in member
+      },
+      include: {
+        service: true,
+      },
+    });
+
+    res.json({ drops }); // Return the drops
+  } catch (error) {
+    console.error("Error fetching member drops:", error);
+    next(error);
+  }
+});
+
 module.exports = router;
