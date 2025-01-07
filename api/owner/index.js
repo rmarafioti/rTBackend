@@ -115,50 +115,6 @@ router.patch("/updatepercentage", async (req, res, next) => {
   }
 });
 
-// GET logged-in owner can access members drops by id
-router.get("/drops/:drop_id", async (req, res, next) => {
-  try {
-    const owner = res.locals.user;
-
-    if (!owner) {
-      return res.status(401).json({ error: "Owner not authenticated" });
-    }
-
-    const { drop_id } = req.params;
-
-    // Fetch the drop and eagerly load related data
-    const getDrop = await prisma.drop.findUnique({
-      where: { id: +drop_id },
-      include: {
-        service: true,
-        paidDrop: true, // Include services for the drop
-        member: {
-          include: {
-            business: true, // Include the business the member belongs to
-          },
-        },
-      },
-    });
-
-    // Ensure all relationships are loaded and valid
-    if (
-      !getDrop ||
-      !getDrop.member ||
-      !getDrop.member.business ||
-      getDrop.member.business.owner_id !== owner.id
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Not authorized to access this drop" });
-    }
-
-    res.json(getDrop);
-  } catch (error) {
-    console.error("Error retrieving drop:", error);
-    next(error);
-  }
-});
-
 // POST route for an owner to mark a drop as paid and create a paidDrop
 router.post("/paydrops", async (req, res, next) => {
   try {
@@ -217,6 +173,63 @@ router.post("/paydrops", async (req, res, next) => {
   } catch (e) {
     console.error("Error creating paid drop:", e);
     next(e);
+  }
+});
+
+// Route to get drops for a specific member in a specific month and year
+router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
+  try {
+    const { memberId, year, month } = req.params;
+    const user = res.locals.user;
+    const role = res.locals.userRole;
+
+    console.log("Filtering drops for memberId:", memberId);
+    console.log("Requested year:", year, "Requested month:", month);
+
+    if (!role) {
+      return res.status(403).json({ error: "Access forbidden: Invalid role" });
+    }
+
+    if (role === "owner") {
+      // Fetch drops for a specific member
+      const drops = await prisma.drop.findMany({
+        where: {
+          member_id: parseInt(memberId, 10),
+          member: {
+            business: {
+              owner_id: user.id,
+            },
+          },
+          date: {
+            gte: new Date(year, month - 1, 1), // Start of the month
+            lt: new Date(year, month, 0), // End of the month (last day)
+          },
+        },
+        include: {
+          member: true,
+          service: true,
+        },
+      });
+
+      // Fetch member details
+      const memberDetails = await prisma.member.findUnique({
+        where: {
+          id: parseInt(memberId, 10),
+        },
+        select: {
+          memberName: true,
+        },
+      });
+
+      res.json({ drops, memberDetails });
+    } else {
+      return res
+        .status(403)
+        .json({ error: "Access forbidden: Not authorized" });
+    }
+  } catch (error) {
+    console.error("Error fetching member drops:", error);
+    next(error);
   }
 });
 

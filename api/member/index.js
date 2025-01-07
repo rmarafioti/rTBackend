@@ -317,32 +317,6 @@ router
     }
   });
 
-// GET Logged-in member gets all paid drops
-router.get("/getpaiddrops", async (req, res, next) => {
-  try {
-    const member = res.locals.user;
-
-    const paidDrops = await prisma.drop.findMany({
-      where: {
-        member_id: member.id,
-        paid: true,
-      },
-      include: {
-        service: true,
-      },
-    });
-
-    if (!paidDrops.length === 0) {
-      return res.status(403).json({ error: "No paid drops found" });
-    }
-
-    res.json(paidDrops);
-  } catch (e) {
-    console.error("Error getting drops:", e);
-    next(e);
-  }
-});
-
 // POST Logged-in member create a service
 router.post("/createservice/:drop_id", async (req, res, next) => {
   try {
@@ -432,6 +406,38 @@ router.post("/paynotice", async (req, res, next) => {
   } catch (e) {
     console.error("Error sending payment notice");
     next(e);
+  }
+});
+
+// Route to get all drops for a logged-in member
+router.get("/memberdrops", async (req, res, next) => {
+  try {
+    const user = res.locals.user; // Get the authenticated user
+    const role = res.locals.userRole; // Get the role of the user
+
+    console.log("User Role:", role);
+    console.log("Authenticated User:", user);
+
+    if (!role || role !== "member") {
+      return res
+        .status(403)
+        .json({ error: "Access forbidden: Not authorized" });
+    }
+
+    // Fetch all drops for the logged-in member
+    const drops = await prisma.drop.findMany({
+      where: {
+        member_id: user.id, // Get drops only for the logged-in member
+      },
+      include: {
+        service: true,
+      },
+    });
+
+    res.json({ drops }); // Return the drops
+  } catch (error) {
+    console.error("Error fetching member drops:", error);
+    next(error);
   }
 });
 
