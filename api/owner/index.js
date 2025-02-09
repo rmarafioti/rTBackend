@@ -186,6 +186,13 @@ router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
     console.log("Filtering drops for memberId:", memberId);
     console.log("Requested year:", year, "Requested month:", month);
 
+    // Use UTC for start and end dates
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 1));
+
+    console.log("Start Date (gte):", startDate.toISOString());
+    console.log("End Date (lt):", endDate.toISOString());
+
     if (!role) {
       return res.status(403).json({ error: "Access forbidden: Invalid role" });
     }
@@ -201,8 +208,8 @@ router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
             },
           },
           date: {
-            gte: new Date(year, month - 1, 1), // Start of the month
-            lt: new Date(year, month, 0), // End of the month (last day)
+            gte: startDate,
+            lt: endDate,
           },
         },
         include: {

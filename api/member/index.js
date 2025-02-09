@@ -51,44 +51,6 @@ router
       console.error("Error retrieving member information:", error);
       next(error);
     }
-  })
-  // POST Logged-in member updates their member info when a drop is submitted
-  .post(async (req, res, next) => {
-    try {
-      const member = res.locals.user;
-
-      const { memberCut, memberOwes, businessOwes } = req.body;
-
-      // Fetch the latest member data from the database
-      const thisMember = await prisma.member.findUnique({
-        where: { id: member.id },
-      });
-
-      if (!thisMember) {
-        return res.status(404).json({ error: "Member not found" });
-      }
-
-      const updatedMemberInfo = await prisma.member.update({
-        where: { id: member.id },
-        data: {
-          takeHomeTotal: member.takeHomeTotal + +memberCut,
-          totalOwe: member.totalOwe + +memberOwes,
-          totalOwed: member.totalOwed + +businessOwes,
-        },
-      });
-
-      if (!updatedMemberInfo) {
-        return next({
-          status: 401,
-          message: "Update invalid, please try again",
-        });
-      }
-
-      res.json(updatedMemberInfo);
-    } catch (error) {
-      console.error("Error updating member information:", error);
-      next(error);
-    }
   });
 
 // POST route to link team member to a business
@@ -185,7 +147,7 @@ router
       next(error);
     }
   })
-  // POST Logged-in member can update a drop
+  // POST Logged-in member can update a drop AND update financial totals
   .post(async (req, res, next) => {
     try {
       const member = res.locals.user;
@@ -203,45 +165,66 @@ router
           .json({ error: "Not authorized to update this drop." });
       }
 
-      // Parse date string to a Date object
       date = date ? new Date(date) : null;
 
-      const updatedDrop = await prisma.drop.update({
-        where: { id: +drop_id },
-        data: {
-          date,
-          total,
-          memberCut,
-          businessCut,
-          memberOwes,
-          businessOwes,
-        },
-      });
-
-      if (businessCut) {
-        const business = await prisma.business.findUnique({
-          where: { id: member.business_id },
-          include: { owner: true },
-        });
-
-        if (!business || !business.owner) {
-          console.error("Business or owner not found");
-          return res
-            .status(404)
-            .json({ error: "Business or owner not found." });
-        }
-
-        const owner = business.owner;
-
-        const updatedOwner = await prisma.owner.update({
-          where: { id: owner.id },
+      const transaction = await prisma.$transaction(async (prisma) => {
+        // 1️⃣ Update the drop
+        const updatedDrop = await prisma.drop.update({
+          where: { id: +drop_id },
           data: {
-            takeHomeTotal: owner.takeHomeTotal + +businessCut,
+            date,
+            total,
+            memberCut,
+            businessCut,
+            memberOwes,
+            businessOwes,
           },
         });
-      }
 
-      res.json(updatedDrop);
+        // 2️⃣ Fetch the latest member data (ensures latest calculations)
+        const thisMember = await prisma.member.findUnique({
+          where: { id: member.id },
+        });
+
+        if (!thisMember) {
+          throw new Error("Member not found.");
+        }
+
+        // 3️⃣ Calculate proper adjustments
+        let newTotalOwe = Math.max(0, memberOwes - (businessOwes || 0));
+
+        let newTotalOwed = Math.max(0, businessOwes - (memberOwes || 0));
+
+        // 4️⃣ Adjust `totalOwe` and `totalOwed` based on past values
+        newTotalOwe = Math.max(0, thisMember.totalOwe + newTotalOwe);
+        newTotalOwed = Math.max(0, thisMember.totalOwed + newTotalOwed);
+
+        // 5️⃣ Ensure one balance cancels the other
+        if (newTotalOwe > newTotalOwed) {
+          newTotalOwe -= newTotalOwed;
+          newTotalOwed = 0;
+        } else if (newTotalOwed > newTotalOwe) {
+          newTotalOwed -= newTotalOwe;
+          newTotalOwe = 0;
+        } else {
+          newTotalOwe = 0;
+          newTotalOwed = 0;
+        }
+
+        // 6️⃣ Update the member's financial totals
+        const updatedMemberInfo = await prisma.member.update({
+          where: { id: member.id },
+          data: {
+            takeHomeTotal: thisMember.takeHomeTotal + memberCut,
+            totalOwe: newTotalOwe,
+            totalOwed: newTotalOwed,
+          },
+        });
+
+        return { updatedDrop, updatedMemberInfo };
+      });
+
+      res.json(transaction);
     } catch (error) {
       console.error("Error updating drop:", error);
       next(error);
@@ -275,7 +258,7 @@ router
       }
 
       // Extract values from the drop
-      const { memberCut, businessCut, memberOwes, businessOwes } = drop;
+      const { memberCut, businessCut } = drop;
 
       // Adjust the business owner's takeHomeTotal if businessCut exists
       if (businessCut && drop.member.business?.owner) {
@@ -296,12 +279,8 @@ router
           takeHomeTotal: {
             decrement: memberCut || 0, // Subtract the member's cut
           },
-          totalOwe: {
-            decrement: memberOwes || 0, // Subtract member's owe amount
-          },
-          totalOwed: {
-            decrement: businessOwes || 0, // Subtract the owed amount to the member
-          },
+          totalOwe: 0,
+          totalOwed: 0,
         },
       });
 
@@ -409,14 +388,10 @@ router.post("/paynotice", async (req, res, next) => {
   }
 });
 
-// Route to get all drops for a logged-in member
 router.get("/memberdrops", async (req, res, next) => {
   try {
     const user = res.locals.user; // Get the authenticated user
     const role = res.locals.userRole; // Get the role of the user
-
-    console.log("User Role:", role);
-    console.log("Authenticated User:", user);
 
     if (!role || role !== "member") {
       return res
@@ -424,17 +399,18 @@ router.get("/memberdrops", async (req, res, next) => {
         .json({ error: "Access forbidden: Not authorized" });
     }
 
-    // Fetch all drops for the logged-in member
+    // Fetch all drops for the logged-in member and include member details
     const drops = await prisma.drop.findMany({
       where: {
-        member_id: user.id, // Get drops only for the logged-in member
+        member_id: user.id, // Fetch drops for the logged-in member
       },
       include: {
         service: true,
+        member: true, // Include the member relationship
       },
     });
 
-    res.json({ drops }); // Return the drops
+    res.json({ drops }); // Return the drops with nested member data
   } catch (error) {
     console.error("Error fetching member drops:", error);
     next(error);
