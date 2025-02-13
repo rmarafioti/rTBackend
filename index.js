@@ -11,7 +11,7 @@ const app = express();
 // Enable CORS (Update with actual frontend URL in production)
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["https://r-t-frontend.vercel.app", "http://localhost:5173"],
   })
 );
 
