@@ -293,7 +293,17 @@ router
       }
 
       // Extract values from the drop
-      const { memberCut, businessCut } = drop;
+      const { memberCut, businessCut, memberOwes, businessOwes } = drop;
+
+      // Fetch the current financial totals of the member
+      const currentMember = await prisma.member.findUnique({
+        where: { id: member.id },
+        select: { takeHomeTotal: true, totalOwe: true, totalOwed: true },
+      });
+
+      if (!currentMember) {
+        return res.status(400).json({ error: "Member not found." });
+      }
 
       // Adjust the business owner's takeHomeTotal if businessCut exists
       if (businessCut && drop.member.business?.owner) {
@@ -307,15 +317,21 @@ router
         });
       }
 
-      // Adjust the member's financial totals
+      // ✅ Adjust the member's financial totals correctly
+      const updatedTotalOwe = Math.max(0, currentMember.totalOwe - memberOwes);
+      const updatedTotalOwed = Math.max(
+        0,
+        currentMember.totalOwed - businessOwes
+      );
+
       await prisma.member.update({
         where: { id: member.id },
         data: {
           takeHomeTotal: {
             decrement: memberCut || 0, // Subtract the member's cut
           },
-          totalOwe: 0,
-          totalOwed: 0,
+          totalOwe: updatedTotalOwe, // ✅ Only subtract from totalOwe
+          totalOwed: updatedTotalOwed, // ✅ Only subtract from totalOwed
         },
       });
 
