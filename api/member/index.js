@@ -157,6 +157,17 @@ router
 
       const validDrop = await prisma.drop.findUnique({
         where: { id: +drop_id },
+        include: {
+          member: {
+            include: {
+              business: {
+                include: {
+                  owner: true, // ✅ Ensure we retrieve the related owner
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!validDrop || validDrop.member_id !== member.id) {
@@ -166,6 +177,13 @@ router
       }
 
       date = date ? new Date(date) : null;
+
+      const owner = validDrop?.member?.business?.owner; // ✅ Get the business owner
+      if (!owner) {
+        return res
+          .status(400)
+          .json({ error: "No owner associated with this business." });
+      }
 
       const transaction = await prisma.$transaction(async (prisma) => {
         // 1️⃣ Update the drop
@@ -221,7 +239,24 @@ router
           },
         });
 
-        return { updatedDrop, updatedMemberInfo };
+        // 7️⃣ Fetch the latest owner data to get takeHomeTotal
+        const thisOwner = await prisma.owner.findUnique({
+          where: { id: owner.id },
+        });
+
+        if (!thisOwner) {
+          throw new Error("Owner not found.");
+        }
+
+        //add something like this
+        const updateOwnerInfo = await prisma.owner.update({
+          where: { id: owner.id },
+          data: {
+            takeHomeTotal: thisOwner.takeHomeTotal + businessCut,
+          },
+        });
+
+        return { updatedDrop, updatedMemberInfo, updateOwnerInfo };
       });
 
       res.json(transaction);
