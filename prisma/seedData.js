@@ -1,4 +1,4 @@
-// create specific info for owner, buisness and team members to seed data and help test
+// create specific info for owner
 
 const owners = [
   {
