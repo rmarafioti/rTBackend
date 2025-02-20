@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const prisma = require("../../prisma");
 
-// Fisrt check if the user in an owner...
-router.use((req, res, next) => {
+// Fisrt check if the user in an owner.
+router.use((res, next) => {
   if (res.locals.userRole !== "owner") {
     return res.status(403).json({ error: "Access forbidden: Owners only" });
   }
@@ -11,12 +11,10 @@ router.use((req, res, next) => {
 });
 
 // GET route to get logged-in owner's information
-router.get("/", async (req, res, next) => {
+router.get("/", async (res, next) => {
   try {
-    // Access the owner from res.locals, set by the middleware in api/index.js
     const owner = res.locals.user;
 
-    // Query the database for the owner's details
     const ownerData = await prisma.owner.findUnique({
       where: { id: owner.id },
       include: {
@@ -37,8 +35,6 @@ router.get("/", async (req, res, next) => {
         },
       },
     });
-
-    // Send the owner's information as a response
     res.json(ownerData);
   } catch (error) {
     console.error("Error retrieving owner information:", error);
@@ -83,7 +79,6 @@ router.patch("/updatepercentage", async (req, res, next) => {
         .json({ error: "Invalid member ID or percentage value" });
     }
 
-    // Fetch the member to update their percentage
     const member = await prisma.member.findUnique({
       where: { id: memberId },
       include: {
@@ -135,7 +130,7 @@ router.post("/paydrops", async (req, res, next) => {
       data: {
         payee,
         paidMessage,
-        amount, // Ensure the amount is correctly passed from the request body
+        amount,
       },
     });
 
@@ -198,7 +193,6 @@ router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
     }
 
     if (role === "owner") {
-      // Fetch drops for a specific member
       const drops = await prisma.drop.findMany({
         where: {
           member_id: parseInt(memberId, 10),
@@ -218,7 +212,6 @@ router.get("/memberdrops/:memberId/:year/:month", async (req, res, next) => {
         },
       });
 
-      // Fetch member details
       const memberDetails = await prisma.member.findUnique({
         where: {
           id: parseInt(memberId, 10),

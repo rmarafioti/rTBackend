@@ -13,7 +13,6 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// Fisrt check if the user in an owner...
 router.use((req, res, next) => {
   const userRole = res.locals.userRole;
 
@@ -22,18 +21,15 @@ router.use((req, res, next) => {
       .status(403)
       .json({ error: "Access forbidden: Owners and Members only" });
   }
-
   next();
 });
 
-//use is route for the member drop feature
 // GET logged-in owner can access members drops by id / member can access their drops by id.
 router.get("/drops/:drop_id", async (req, res, next) => {
   try {
-    const user = res.locals.user; // Retrieve the authenticated user
+    const user = res.locals.user;
     const { drop_id } = req.params;
 
-    // Fetch the drop and eagerly load related data
     const getDrop = await prisma.drop.findUnique({
       where: { id: +drop_id },
       include: {
@@ -41,20 +37,17 @@ router.get("/drops/:drop_id", async (req, res, next) => {
         paidDrop: true,
         member: {
           include: {
-            business: true, // Include the business the member belongs to
+            business: true,
           },
         },
       },
     });
 
-    // Ensure the drop exists
     if (!getDrop) {
       return res.status(404).json({ error: "Drop not found" });
     }
 
-    // Authorization logic
     if (user.role === "owner") {
-      // Owners can access if they own the business linked to the drop
       if (
         !getDrop.member ||
         !getDrop.member.business ||
@@ -72,8 +65,6 @@ router.get("/drops/:drop_id", async (req, res, next) => {
           .json({ error: "Not authorized to access this drop" });
       }
     }
-
-    // Respond with the drop data
     res.json(getDrop);
   } catch (error) {
     console.error("Error retrieving drop:", error);
