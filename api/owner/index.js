@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require("../../prisma");
 
 // Fisrt check if the user in an owner.
-router.use((res, next) => {
+router.use((req, res, next) => {
   if (res.locals.userRole !== "owner") {
     return res.status(403).json({ error: "Access forbidden: Owners only" });
   }
@@ -11,7 +11,7 @@ router.use((res, next) => {
 });
 
 // GET route to get logged-in owner's information
-router.get("/", async (res, next) => {
+router.get("/", async (req, res, next) => {
   try {
     const owner = res.locals.user;
 
