@@ -41,11 +41,11 @@ router.post("/register", async (req, res, next) => {
 // Returns token for account if credentials valid
 router.post("/login", async (req, res, next) => {
   try {
-    const { username, ownerName, password } = req.body;
+    const { username, password } = req.body;
 
     // Check if username, ownerName and password are provided
-    if (!username || !password || !ownerName) {
-      throw new ServerError(400, "Username, name, and password required.");
+    if (!username || !password) {
+      throw new ServerError(400, "Username, and password required.");
     }
 
     // Check if account exists
